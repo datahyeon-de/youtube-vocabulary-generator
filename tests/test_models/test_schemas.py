@@ -3,7 +3,7 @@ Pydantic 스키마 테스트
 """
 import pytest
 from pydantic import ValidationError
-from app.models.schemas import VideoUrlRequests
+from app.models.schemas import VideoUrlRequests, VideoUrlResponse
 
 
 # ============================================================================
