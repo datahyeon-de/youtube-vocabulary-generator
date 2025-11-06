@@ -14,3 +14,8 @@ pydantic>=2.0.0
 # 기타 유틸리티
 python-multipart>=0.0.6
 
+# 테스트 라이브러리
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+httpx>=0.25.0  # FastAPI 테스트용 HTTP 클라이언트
+
