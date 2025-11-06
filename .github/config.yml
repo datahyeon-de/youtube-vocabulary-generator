@@ -1,0 +1,8 @@
+---
+blank_issues_enabled: false
+contact_links:
+  - name: 기여 가이드
+    url: https://github.com/YOUR_USERNAME/youtube-vocabulary-generator/blob/main/CONTRIBUTING.md
+    about: 브랜치 네이밍, 커밋 메시지, 작업 흐름에 대한 가이드를 확인하세요
+---
+
