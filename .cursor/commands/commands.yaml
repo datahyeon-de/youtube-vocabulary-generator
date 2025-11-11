@@ -1,0 +1,58 @@
+init_project:
+  설명: "Cursor 기본 폴더 및 프로젝트 구조를 초기화"
+  동작:
+    - 생성: .cursor/, .github/, tests/, main.py, README.md
+    - 생성: .cursor/rules/, .cursor/commands/
+    - 생성: .github/ISSUE_TEMPLATE, .github/PULL_REQ_TEMPLATE
+    - 파일 생성: .cursor/project-plan.md, .cursor/rules/rules.mdc, .cursor/commands/commands.yaml
+    - 파일 생성: .github/configuration.md, .github/documentation.md, .github/feature-development.md, .github/feature-modification.md (user rules:[Github TEMPLATE 설정] 확인)
+explain_project:
+  설명: "project-plan.md 내 프로젝트 개요 설명"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 "1. 프로젝트 개요"의 내용을 현재 작성된 기준으로 .md 파일형식으로 생략없이 보여준다.
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+show_plan:
+  설명: "project-plan.md 내 전체 계획 확인"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 "3. Phase & Task 세부 계획"의 내용을 현재 작성된 기준으로 .md 파일형식으로 생략없이 보여준다.
+    - 추가적으로 필요한 부연설명(현재 진행하고 있는 Phase, Task 또는 다음 Phase, Task 등)을 추가한다.
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+sync_plan:
+  설명: "project-plan.md 내 Phase 상태 자동 동기화"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 프로젝트 진행 계획의 체크박스 상태 확인 및 업데이트
+    - `.cursor/project-plan.md` 파일을 수정된 계획의 내용을 반영하여 업데이트
+    - `.cursor/project-plan.md` 파일 내에 기록되어 있는 진행 단계 인식
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+current_phase:
+  설명: "project-plan.md 내 현재 진행하는 Phase 확인"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 프로젝트 현재 진행 상태 확인
+    - Phase 단계부터 현재 진행중인 세부 중, 소 단계까지 설명
+    - 다음 단계에 대한 내용 설명
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+next_phase:
+  설명: "project-plan.md 내 현재 진행하는 Phase의 다음 Phase 진행"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 프로젝트 현재 진행 상태 확인
+    - 현재 진행중인 Phase의 다음 Phase 진행
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+next_task:
+  설명: "project-plan.md 내 현재 진행하는 Task의 다음 Task 진행"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 프로젝트 현재 진행 상태 확인
+    - 현재 진행중인 Task의 다음 Task 진행
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+update_readme:
+  설명: "project-plan.md 내 현재까지 진행된 내역을 확인하여 README.md 수정"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 프로젝트 현재까지의 진행 상태 확인
+    - 현재까지의 진행된 작업물들을 확인하여 `README.md` 파일 수정
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)

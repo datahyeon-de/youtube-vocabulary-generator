@@ -8,6 +8,9 @@ cursor/
 practice/
 
 
+# Cursor Conversation History
+.cursor/ai_session_summary.md
+
 # C extensions
 *.so
 

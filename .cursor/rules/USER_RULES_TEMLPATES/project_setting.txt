@@ -1,0 +1,108 @@
+[프로젝트 규칙]
+- 현재 작업중인 디렉토리 위치를 기준으로 `.cursor` 폴더가 있을 경우 아래 파일들을 우선적으로 확인한다.
+  - .cursor/project_plan.md
+  - .cursor/commands/commands.yaml
+  - .cursor/rules/rules.mdc
+  - 위 파일들이 없을 경우 'user rules`를 확인 후 필요로 하는 항목을 사용자게에 요청한다.
+
+- 현재 작업중인 디렉토리 위치를 기준으로 디렉토리가 비어있거나, `.cursor` 폴더가 존재하지 않으면 다음을 수행한다:
+ - 사용자에게 “현재 작업 디렉토리는 프로젝트를 위한 것인가요?”
+ - 프로젝트를 위한 디렉토리라면 사용자에게 "프로젝트를 초기화하시겠습니까?"라고 묻는다.
+ - 프로젝트를 위한 디렉토리가 아니라면 기본 대화를 이어간다.
+ - 프로젝트를 위한 디렉토리일 경우 아래 구조를 자동 생성한다.
+```
+.cursor/
+├── rules/
+├── commands/
+.github/
+├── ISSUE_TEMPLATE/
+├── PULL_REQUEST_TEMPLATE/
+main.py
+tests/
+README.md
+```
+- 프로젝를 위한 디렉토리이면서 `.cursor/project-plan.md` 파일이 존재하지 않을 경우, 사용자에게 어떤 프로젝트를 진행할 것인지 물어보고 진행 내용을 바탕으로 아래 항목으로 `.cursor/project-plan.md` 파일을 작성한다:
+  - 1. 프로젝트 개요(목적, 주요 기능, 기술 스택, 사용자)
+  - 2. 주요 목표 및 산출물
+  - 3. 대(Phase) - 중(Task) - 소(Task) 단계로 세분화하여 계획을 진행한다.
+    - 진행 단계에 대한 표시는 체크박스로 구분하며, 체크박스의 상태는 다음과 같다: ✅: 진행완료 / ⏳: 진행중 / ◻️: 미진행
+    - 체크박스는 Phase 단계뿐만 아니라, 상세 계획에 대해서도 적용한다.
+    - 계획에서 “대 계획”은 Phase, “중 / 소 계획” 또는 “상세계획”은 Task 로 일컫는다
+  - 4. 현재 진행 상태
+    - 현재까지 진행했던 Phase를 나타내며 맨 아래에는 현재 진행하고 있는 Phase가 위치함
+- 프로젝를 위한 디렉토리이면서 `.cursor/ai_session_summary.md` 파일이 존재하지 않을 경우, `.cursor/ai_session_summary.md` 파일을 생성한 후 아래 항목을 작성한다.
+  - AI Session Summary
+    - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 날짜와 시간(시, 분, 초)를 포함하여 기록한다. (대화 로그 참조용)
+- 프로젝를 위한 디렉토리이면서 `.cursor/project-plan.md` 파일이 존재하지 않을 경우 해당 파일을 전체 스캔하여 프로젝트의 내용을 전반적으로 확인하고, 현재까지 진행했던 내용과 진행하고 있는 내용, 진행해야할 내용들을 숙지한다.
+- 프로젝트를 진행하면서 계획이 바뀌는 경우 기존의 작성된 `.cursor/project-plan.md`, `.cursor/ai_session_summary.md` 파일들을 참고하여 내용의 순서를 재정렬하여 해당 파일을 수정한다.
+- `README.md ` 파일은 Phase가 완료될 때마다 큰 수정사항이 있는지 체크 후 자동 수정한다.
+- 코드 스타일(Python): PEP8 / Google Python Style Guide를 참조한다.
+- [.cursor/commands/ 규칙], [.cursor/commands/ 규칙]을 참고한다.
+
+[.cursor/rules/ 규칙]
+- 프로젝트별 사용자가 별도의 규칙을 정할 수 있도록 추가 요청사항이 있는지 확인한다.
+  - 구체적인 요청사항이 없을 경우 빈 파일을 유지하고, 프로젝트를 진행하며 사용자의 프로젝트 자체에 대한 Agent 요청이 있을 경우 내용에 추가한다.
+
+[.cursor/commands/ 규칙]
+- 해당 디렉토리에는 commands.yaml 파일을 작성하고 아래와 같이 구성한다.
+- ".cursor/project-plan.md" 또는 `.cursor/ai_session_summary.md`, `README.md`, `CONTRIBUTING.md` 파일 내용을 추가, 수정을 하는 작업과 그에 필요한 행위를 하기 위해 실행되는 명령어는 해당 파일 자체의 삭제나 내용을 초기화 시키는 행위의 명령어를 제외하고는 사용자의 승인 없이 진행할 수 있다.
+```
+init_project:
+  설명: "Cursor 기본 폴더 및 프로젝트 구조를 초기화"
+  동작:
+    - 생성: .cursor/, .github/, tests/, main.py, README.md
+    - 생성: .cursor/rules/, .cursor/commands/
+    - 생성: .github/ISSUE_TEMPLATE, .github/PULL_REQ_TEMPLATE
+    - 파일 생성: .cursor/project-plan.md, .cursor/rules/rules.mdc, .cursor/commands/commands.yaml
+    - 파일 생성: .github/configuration.md, .github/documentation.md, .github/feature-development.md, .github/feature-modification.md (user rules:[Github TEMPLATE 설정] 확인)
+explain_project:
+  설명: "project-plan.md 내 프로젝트 개요 설명"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 "1. 프로젝트 개요"의 내용을 현재 작성된 기준으로 .md 파일형식으로 생략없이 보여준다.
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+show_plan:
+  설명: "project-plan.md 내 전체 계획 확인"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 "3. Phase & Task 세부 계획"의 내용을 현재 작성된 기준으로 .md 파일형식으로 생략없이 보여준다.
+    - 추가적으로 필요한 부연설명(현재 진행하고 있는 Phase, Task 또는 다음 Phase, Task 등)을 추가한다.
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+sync_plan:
+  설명: "project-plan.md 내 Phase 상태 자동 동기화"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 프로젝트 진행 계획의 체크박스 상태 확인 및 업데이트
+    - `.cursor/project-plan.md` 파일을 수정된 계획의 내용을 반영하여 업데이트
+    - `.cursor/project-plan.md` 파일 내에 기록되어 있는 진행 단계 인식
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+current_phase:
+  설명: "project-plan.md 내 현재 진행하는 Phase 확인"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 프로젝트 현재 진행 상태 확인
+    - Phase 단계부터 현재 진행중인 세부 중, 소 단계까지 설명
+    - 다음 단계에 대한 내용 설명
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+next_phase:
+  설명: "project-plan.md 내 현재 진행하는 Phase의 다음 Phase 진행"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 프로젝트 현재 진행 상태 확인
+    - 현재 진행중인 Phase의 다음 Phase 진행
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+next_task:
+  설명: "project-plan.md 내 현재 진행하는 Task의 다음 Task 진행"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 프로젝트 현재 진행 상태 확인
+    - 현재 진행중인 Task의 다음 Task 진행
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+update_readme:
+  설명: "project-plan.md 내 현재까지 진행된 내역을 확인하여 README.md 수정"
+  동작:
+    - `.cursor/project-plan.md` 파일 내의 프로젝트 현재까지의 진행 상태 확인
+    - 현재까지의 진행된 작업물들을 확인하여 `README.md` 파일 수정
+    - `.cursor/ai_session_summary.md`에 추가 할만한 내용인지 아래 기준을 참고하여 판단 후 해당 명령어 실행 내역(왜 실행했는지, 뭘 확인했는지, 결과는 무엇인지 등)을 날짜와 시간(시, 분, 초)를 포함하여 추가 기록한다. 날짜와 시간을 확인하는 명령어는 사용자의 승인 없이 진행할 수 있다.
+      - 최근 AI 와 대화를 요약한 내용이며, 진행단계의 변화가 생기거나, 프로젝트 내용의 중요한 국면의 변화나 심도 있게 논의한 내용을 나눌 경우 `.cursor/ai_session_summary.md` 파일에 추가 기록한다. (대화 로그 참조용)
+```

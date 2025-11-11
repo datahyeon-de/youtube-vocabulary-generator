@@ -1,0 +1,29 @@
+# 프로젝트 공통 규칙
+
+## 1. 커밋 & 브랜치 정책
+- 설정 파일 작업: 브랜치 `chore/설정파일명-간단설명`, 커밋 `chore: ...`
+- 문서 작업: 브랜치 `docs/문서명-간단설명`, 커밋 `docs: ...`
+- 신규 기능: 브랜치 `feat/기능명-간단설명`, 커밋 `feat: ...`
+- 기능 수정/버그: 브랜치 `fix/수정내용-간단설명`, 커밋 `fix: ...`
+
+## 2. 이슈 & PR 템플릿
+- 이슈 생성 시 `.github/ISSUE_TEMPLATE` 내 템플릿을 목적에 맞게 선택합니다.
+- Pull Request는 `.github/PULL_REQUEST_TEMPLATE/pull-request.md` 양식에 따라 작성합니다.
+- 체크리스트는 실제 진행 상황에 맞춰 업데이트합니다.
+
+## 3. 프로젝트 구조 유지
+- `.cursor/` 내부 구성: `project-plan.md`, `rules/rules.mdc`, `commands/commands.yaml` 필수 유지
+- `.github/ISSUE_TEMPLATE/`와 `.github/PULL_REQUEST_TEMPLATE/` 디렉터리는 삭제하거나 이동하지 않습니다.
+- 신규 규칙이나 절차가 생기면 `rules.mdc`를 업데이트해 공유합니다.
+
+## 4. 개발 진행 원칙
+- 기능 구현 → 에러 핸들링 → 수동 테스트 → 자동 테스트 순으로 진행합니다.
+- 각 작업 단계에서 명령어와 파일의 역할을 명확히 설명하고 문서화합니다.
+- 테스트 코드는 AAA(Arrange-Act-Assert) 패턴을 따르며 필요 시 실행 방법을 함께 기록합니다.
+
+## 5. 계획 및 문서 동기화
+- 작업 단계 변경 시 `.cursor/project-plan.md`를 갱신하고 `AI Session Summary`에 기록합니다.
+- Phase 완료 후 README에 영향 있는 변경이 있다면 `update_readme` 절차를 참고해 수정합니다.
+- 프로젝트 진행 상황을 공유할 때는 `cursor/` 문서와 `project-plan.md`를 우선 참고합니다.
+
+> 위 규칙은 모든 협업자가 동일한 맥락에서 프로젝트를 진행하기 위한 가이드입니다.
