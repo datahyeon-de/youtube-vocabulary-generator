@@ -61,3 +61,11 @@ class VideoUrlResponse(BaseModel):
     video_id: str
     status: str
     message: str | None = None
+    
+class TranscriptResponse(BaseModel):
+    """YouTube 자막 응답 스키마"""
+    video_id: str
+    transcript: str
+    status: str
+    language: str = "en"
+    message: str | None = None
