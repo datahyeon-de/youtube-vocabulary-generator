@@ -38,10 +38,10 @@
 ## ⏳ Phase 3: 자막 추출 서비스
 - ✅ `youtube-transcript-api` 의존성 추가 및 관리
 - ✅ `TranscriptResponse` 스키마 정의 (`app/models/schemas.py`)
-- ◻️ `get_transcript(video_id)` 서비스 구현 (`app/services/transcript.py` 예정)
-- ◻️ `POST /api/video/{video_id}/transcript` 엔드포인트 추가
-- ◻️ 자막 미존재, 비공개 처리 등 예외 핸들링
-- ◻️ 기본 수동 테스트 절차 정리
+- ✅ `get_transcript(video_id)` 서비스 구현 (`app/services/transcript.py`)
+- ✅ `POST /api/video/{video_id}/transcript` 엔드포인트 추가
+- ✅ 자막 미존재, 비공개 처리 등 예외 핸들링
+- ⏳ 기본 수동 테스트 절차 정리
 
 ## ◻️ Phase 4: LLM 처리 서버 구축
 - ◻️ LLM 연동 방식 확정 (외부 API 또는 자체 서버)
