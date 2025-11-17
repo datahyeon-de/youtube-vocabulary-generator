@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
-from app.models.schemas import VideoUrlRequests, VideoUrlResponse
+from app.models.schemas import VideoUrlRequests, VideoUrlResponse, TranscriptResponse
 from app.services.validator import extract_video_id
+from app.services.transcript import get_transcript
 
 router = APIRouter(prefix="/api/video", tags=["video"])
 
@@ -32,3 +33,34 @@ def process_video_url(request: VideoUrlRequests):
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+        
+
+@router.post("/{video_id}/transcript", response_model=TranscriptResponse)
+def get_transcript(video_id: str):
+    """YouTube 영상의 자막을 추출합니다.
+    
+    Args:
+        video_id: YouTube 영상 ID
+        
+    Returns:
+        TranscriptResponse: 자막 텍스트와 상태 정보
+    """
+    try:
+        # 자막 추출
+        transcript_text = get_transcript(video_id)
+        
+        # 응답 반환
+        return TranscriptResponse(
+            video_id=video_id,
+            transcript=f'{transcript_text[:100]}...',
+            status="success",
+            language="en",
+        )
+    except ValueError as e:
+        # 사용자 입력 오류는 400 Bad Request로 반환
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
