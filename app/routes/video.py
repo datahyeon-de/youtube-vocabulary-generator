@@ -6,7 +6,7 @@ from app.services.transcript import get_transcript
 router = APIRouter(prefix="/api/video", tags=["video"])
 
 @router.post("/", response_model=VideoUrlResponse)
-def process_video_url(request: VideoUrlRequests):
+def post_process_video_url(request: VideoUrlRequests):
     """YouTube URL을 받아서 Video ID를 반환합니다.
     
     Args:
@@ -36,7 +36,7 @@ def process_video_url(request: VideoUrlRequests):
         
 
 @router.post("/{video_id}/transcript", response_model=TranscriptResponse)
-def get_transcript(video_id: str):
+def post_get_video_transcript(video_id: str):
     """YouTube 영상의 자막을 추출합니다.
     
     Args:
@@ -55,6 +55,7 @@ def get_transcript(video_id: str):
             transcript=f'{transcript_text[:100]}...',
             status="success",
             language="en",
+            message=None
         )
     except ValueError as e:
         # 사용자 입력 오류는 400 Bad Request로 반환
