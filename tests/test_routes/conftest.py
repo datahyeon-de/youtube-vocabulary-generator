@@ -69,3 +69,31 @@ def invalid_url_format_no_scheme():
     """
     return "youtube.com"
 
+
+@pytest.fixture
+def sample_video_id():
+    """정상적인 YouTube Video ID (자막이 있는 영상)
+    
+    사용 위치:
+        - tests/test_routes/test_video.py: POST /api/video/{video_id}/transcript 정상 케이스 테스트
+    
+    테스트 대상:
+        - app/routes/video.py의 POST /api/video/{video_id}/transcript 엔드포인트
+        - 자막이 있는 영상으로 자막 추출 성공 확인
+    """
+    return "dQw4w9WgXcQ"  # Rick Astley - Never Gonna Give You Up (자막 있음)
+
+
+@pytest.fixture
+def invalid_video_id():
+    """존재하지 않는 YouTube Video ID (에러 케이스용)
+    
+    사용 위치:
+        - tests/test_routes/test_video.py: POST /api/video/{video_id}/transcript 에러 케이스 테스트
+    
+    테스트 대상:
+        - app/routes/video.py의 POST /api/video/{video_id}/transcript 엔드포인트
+        - 존재하지 않는 영상 ID 입력 시 400 에러 반환 확인
+    """
+    return "INVALID_VIDEO_ID_12345"
+
