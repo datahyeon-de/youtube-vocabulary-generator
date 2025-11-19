@@ -19,7 +19,7 @@ def create_chunks(video_id: str, raw_segments: List[dict]) -> List[dict]:
     current_chunk_tokens = 0  # 현재 청크의 토큰 수
     chunk_start_idx = 1
     
-    ACCESS_LOGGER.info(f"Start Creating Chunk")
+    ACCESS_LOGGER.info(f"Start Creating Chunk for Video ID: '{video_id}'")
     for idx, segment in enumerate(raw_segments, start=1):
         segment_text = segment["text"]
         segment_tokens = count_tokens(segment_text)
@@ -33,7 +33,7 @@ def create_chunks(video_id: str, raw_segments: List[dict]) -> List[dict]:
                 'token_count': current_chunk_tokens,
                 'segment_range': f"{chunk_start_idx}-{idx - 1}"
             })
-            ACCESS_LOGGER.debug(f"Chunk Created: {len(chunks)}")
+            ACCESS_LOGGER.debug(f"Chunk Created: {len(chunks)} for Video ID: '{video_id}'")
             # 새 청크 시작
             current_chunk_texts = [segment_text]
             current_chunk_tokens = segment_tokens
@@ -45,21 +45,20 @@ def create_chunks(video_id: str, raw_segments: List[dict]) -> List[dict]:
 
     # 마지막 청크 추가 (남은 것이 있으면)
     if current_chunk_texts:
-        # print(f"자막 청크 생성 완료: {len(raw_segments) - len(current_chunk_texts) + 1}-{len(raw_segments)}")
         chunk_text = ' '.join(current_chunk_texts)
         chunks.append({
             'text': chunk_text,
             'token_count': current_chunk_tokens,
             'segment_range': f"{chunk_start_idx}-{len(raw_segments)}"
         })
-        ACCESS_LOGGER.debug(f"Chunk Created: {len(chunks)}")
+        ACCESS_LOGGER.debug(f"Chunk Created: {len(chunks)} for Video ID: '{video_id}'")
     
-    ACCESS_LOGGER.info(f"End Creating Chunks")
-    ACCESS_LOGGER.info(f"Total Chunks Created: {len(chunks)}")
+    ACCESS_LOGGER.info(f"End Creating Chunks for Video ID: '{video_id}'")
+    ACCESS_LOGGER.info(f"Total Chunks Created: {len(chunks)} for Video ID: '{video_id}'")
     
     return chunks
 
-def get_transcript(video_id: str,) -> List[dict]:
+def get_transcript(video_id: str) -> List[dict]:
     """YouTube 영상의 자막을 추출합니다.
     
     Args:
@@ -110,7 +109,7 @@ def get_transcript(video_id: str,) -> List[dict]:
     
     except Exception as e:
         # 기타 예상치 못한 오류
-        msg = f"Unexpected Error: {str(e)}"
-        ERROR_LOGGER.error(f"Error By {msg}")
+        msg = f"Unexpected Error: Video ID: '{video_id}'"
+        ERROR_LOGGER.error(f"Error By {msg} - {str(e)}")
         raise ValueError(msg)
         
