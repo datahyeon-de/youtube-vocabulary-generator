@@ -284,7 +284,19 @@ def test_post_get_video_transcript_success(
     assert data["status"] == "success"
     assert data["video_id"] == video_id
     assert data["language"] == "en"
-    assert len(data["transcript"]) > 0  # 자막 텍스트가 있는지 확인
+    assert len(data["transcript"]) > 0  # 자막 리스트가 비어있지 않은지 확인
+    assert isinstance(data["transcript"], list)  # transcript가 리스트인지 확인
+    
+    # 각 청크가 딕셔너리이고 필요한 키를 가지고 있는지 확인
+    for chunk in data["transcript"]:
+        assert isinstance(chunk, dict), f"청크가 딕셔너리가 아닙니다: {type(chunk)}"
+        assert "text" in chunk, "청크에 'text' 키가 없습니다"
+        assert "token_count" in chunk, "청크에 'token_count' 키가 없습니다"
+        assert "segment_range" in chunk, "청크에 'segment_range' 키가 없습니다"
+        assert isinstance(chunk["text"], str), "'text'가 문자열이 아닙니다"
+        assert isinstance(chunk["token_count"], int), "'token_count'가 정수가 아닙니다"
+        assert isinstance(chunk["segment_range"], str), "'segment_range'가 문자열이 아닙니다"
+    
     print("✅ 정상 케이스 테스트 성공!")
 
 
