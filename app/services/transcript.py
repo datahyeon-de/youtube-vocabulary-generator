@@ -1,41 +1,43 @@
 from youtube_transcript_api import YouTubeTranscriptApi
-from youtube_transcript_api._errors import (
-    TranscriptsDisabled,
-    NoTranscriptFound,
-    VideoUnavailable,
-)
-from typing import Literal, Optional, List
+from youtube_transcript_api._errors import TranscriptsDisabled, NoTranscriptFound, VideoUnavailable
+from typing import List
 from transformers import AutoTokenizer
+from app.core.config import settings
+from app.core.logging import get_access_logger, get_error_logger
 
-TOKENIZER = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-14B-Instruct-AWQ")
+TOKENIZER = AutoTokenizer.from_pretrained(settings.TOKENIZER_MODEL)
+MAX_TOKEN_COUNT = settings.MAX_TOKEN_COUNT
+ACCESS_LOGGER = get_access_logger()
+ERROR_LOGGER = get_error_logger()
 
 def count_tokens(text: str) -> int:
     return len(TOKENIZER.encode(text))
 
-def create_chunks(raw_segments: List[dict]) -> List[dict]:
-    print("자막 청크 생성 시작")
+def create_chunks(video_id: str, raw_segments: List[dict]) -> List[dict]:
     chunks = []  # 최종 청크 리스트
     current_chunk_texts = []  # 현재 청크의 텍스트들
     current_chunk_tokens = 0  # 현재 청크의 토큰 수
-
+    chunk_start_idx = 1
+    
+    ACCESS_LOGGER.info(f"Start Creating Chunk")
     for idx, segment in enumerate(raw_segments, start=1):
         segment_text = segment["text"]
         segment_tokens = count_tokens(segment_text)
         
         # 현재 청크에 추가하면 2000을 넘는지 확인
-        if current_chunk_tokens + segment_tokens > 2000 and current_chunk_texts:
-            # print(f"자막 청크 생성 중 {idx}번째 세그먼트")
+        if current_chunk_tokens + segment_tokens > MAX_TOKEN_COUNT and current_chunk_texts:
             # 현재 청크를 완성하고 저장
             chunk_text = ' '.join(current_chunk_texts)
             chunks.append({
                 'text': chunk_text,
                 'token_count': current_chunk_tokens,
-                'segment_range': f"{idx - len(current_chunk_texts)}-{idx - 1}"
+                'segment_range': f"{chunk_start_idx}-{idx - 1}"
             })
-            
+            ACCESS_LOGGER.debug(f"Chunk Created: {len(chunks)}")
             # 새 청크 시작
             current_chunk_texts = [segment_text]
             current_chunk_tokens = segment_tokens
+            chunk_start_idx = idx
         else:
             # 현재 청크에 추가
             current_chunk_texts.append(segment_text)
@@ -48,11 +50,12 @@ def create_chunks(raw_segments: List[dict]) -> List[dict]:
         chunks.append({
             'text': chunk_text,
             'token_count': current_chunk_tokens,
-            'segment_range': f"{len(raw_segments) - len(current_chunk_texts) + 1}-{len(raw_segments)}"
+            'segment_range': f"{chunk_start_idx}-{len(raw_segments)}"
         })
-
-        
-    # print(f"총 청크 수: {len(chunks)}")
+        ACCESS_LOGGER.debug(f"Chunk Created: {len(chunks)}")
+    
+    ACCESS_LOGGER.info(f"End Creating Chunks")
+    ACCESS_LOGGER.info(f"Total Chunks Created: {len(chunks)}")
     
     return chunks
 
@@ -80,35 +83,34 @@ def get_transcript(video_id: str,) -> List[dict]:
         
         # 자막 가져오기 (영어 우선, 없으면 다른 언어)
         fetched = api.fetch(video_id, languages=["en"])
+        ACCESS_LOGGER.info(f"Success To Fetch Transcript for Video ID: '{video_id}'")
         
         # FetchedTranscript 객체에서 raw_data로 변환
         raw_segments = fetched.to_raw_data()
         
-        print("자막 가져오기 완료")
-        
-        # 자막 데이터에서 텍스트만 추출하여 하나의 문자열로 합치기
-        # transcript_text = ' '.join([item['text'] for item in raw_segments])
-        result = create_chunks(raw_segments)
-        
-        # print(result)
-        
+        # 자막 Chunks 생성
+        result = create_chunks(video_id, raw_segments)
+        ACCESS_LOGGER.info(f"Success To Create Chunks for Video ID: '{video_id}'")
         return result
         
     except TranscriptsDisabled:
-        raise ValueError(
-            f"Video ID '{video_id}'의 영상은 자막이 비활성화되어 있습니다."
-        )
+        msg = f"Disabled Transcripts: Video ID: '{video_id}'"
+        ERROR_LOGGER.error(f"Error By {msg}")
+        raise ValueError(msg)
+    
     except NoTranscriptFound:
-        raise ValueError(
-            f"Video ID '{video_id}'의 영상에는 자막이 없습니다."
-        )
+        msg = f"No Transcript Found: Video ID: '{video_id}'"
+        ERROR_LOGGER.error(f"Error By {msg}")
+        raise ValueError(msg)
+    
     except VideoUnavailable:
-        raise ValueError(
-            f"Video ID '{video_id}'의 영상을 찾을 수 없거나 비공개입니다."
-        )
+        msg = f"Video Unavailable: Video ID: '{video_id}'"
+        ERROR_LOGGER.error(f"Error By {msg}")
+        raise ValueError(msg)
+    
     except Exception as e:
         # 기타 예상치 못한 오류
-        raise ValueError(
-            f"자막을 추출하는 중 오류가 발생했습니다: {str(e)}"
-        )
+        msg = f"Unexpected Error: {str(e)}"
+        ERROR_LOGGER.error(f"Error By {msg}")
+        raise ValueError(msg)
         
