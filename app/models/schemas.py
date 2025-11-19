@@ -58,13 +58,14 @@ class VideoUrlRequests(BaseModel):
     
     
 class VideoUrlResponse(BaseModel):
+    """YouTube URL 응답 스키마"""
     video_id: str
     status: str
     message: str | None = None
     
     
 class TranscriptChunk(BaseModel):
-    """Youtube Chunk"""
+    """Youtube 자막 Chunk 스키마"""
     text: str
     token_count: int
     segment_range: str
