@@ -2,9 +2,11 @@
 fastapi>=0.104.0
 uvicorn[standard]>=0.24.0
 pydantic>=2.0.0
+pydantic-settings>=2.0.0
 
 # 자막 추출 (Phase 3에서 사용 예정)
 youtube-transcript-api>=0.6.0
+transformers>=4.30.0  # 토큰화 및 청크 생성을 위한 라이브러리
 
 # LLM 처리 (Phase 4에서 사용 예정)
 # openai>=1.0.0
