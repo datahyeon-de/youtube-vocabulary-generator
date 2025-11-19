@@ -40,7 +40,8 @@ youtube-vocabulary-generator/
 │   │   └── video.py            # 비디오 관련 엔드포인트
 │   ├── services/
 │   │   ├── __init__.py
-│   │   └── validator.py        # 링크 검증 및 Video ID 추출
+│   │   ├── validator.py        # 링크 검증 및 Video ID 추출
+│   │   └── transcript.py       # YouTube 자막 추출 및 청크 생성
 │   ├── models/
 │   │   ├── __init__.py
 │   │   └── schemas.py          # Pydantic 스키마
@@ -99,8 +100,8 @@ uvicorn app.main:app --reload
 
 - **Phase 1**: 프로젝트 초기 설정 및 레포지터리 구성 ✅
 - **Phase 2**: FastAPI 서버 및 입력 검증 시스템 ✅
-- **Phase 3**: 자막 추출 서비스
-- **Phase 4**: LLM 처리 서버 구축
+- **Phase 3**: 자막 추출 서비스 ✅
+- **Phase 4**: LLM 처리 서버 구축 ⏳
 - **Phase 5**: 단어장 생성 및 응답
 - **Phase 6**: 통합 및 엔드투엔드 테스트
 
