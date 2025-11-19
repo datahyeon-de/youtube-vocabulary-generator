@@ -1,5 +1,6 @@
 from pydantic import BaseModel, field_validator
 from urllib.parse import urlparse
+from typing import List, Optional, Literal, Dict
 
 
 class VideoUrlRequests(BaseModel):
@@ -65,7 +66,7 @@ class VideoUrlResponse(BaseModel):
 class TranscriptResponse(BaseModel):
     """YouTube 자막 응답 스키마"""
     video_id: str
-    transcript: str
+    transcript: List[Dict]
     status: str
     language: str = "en"
     message: str | None = None
