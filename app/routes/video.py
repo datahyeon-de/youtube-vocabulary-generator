@@ -47,12 +47,12 @@ def post_get_video_transcript(video_id: str):
     """
     try:
         # 자막 추출
-        transcript_text = get_transcript(video_id)
+        transcript_list = get_transcript(video_id)
         
         # 응답 반환
         return TranscriptResponse(
             video_id=video_id,
-            transcript=f'{transcript_text[:100]}...',
+            transcript=transcript_list,
             status="success",
             language="en",
             message=None
