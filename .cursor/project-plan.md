@@ -52,36 +52,85 @@
 - ✅ 기본 수동 테스트 절차 정리
 
 ## ⏳ Phase 4: LLM 처리 서버 구축
-- ◻️ LLM 연동 방식 확정 (외부 API 또는 자체 서버)
-  - OpenAI API, Anthropic Claude API, 자체 서버(Ollama 등) 중 선택
-  - API 키 및 설정 관리 방법 결정
-  - 비용 및 성능 고려사항 검토
-- ◻️ LLM 의존성 추가 및 설정 모듈 구성
-  - 선택한 LLM 라이브러리 의존성 추가 (`requirements.txt`)
-  - LLM 설정 모듈 생성 (`app/core/llm_config.py` 또는 `app/services/llm/`)
-  - 환경 변수 관리 (API 키, 모델명 등)
-- ◻️ 자막 청크 기반 핵심 단어 추출 로직 구현
-  - LLM 프롬프트 설계 (단어 추출용)
-  - 청크별 단어 추출 함수 구현 (`app/services/llm/extract_words.py`)
-  - 중복 단어 제거 및 빈도수 집계 로직
-  - 단어 난이도 분류 로직 (선택사항)
-- ◻️ 한국어 의미 생성 로직 구현
-  - LLM 프롬프트 설계 (한국어 뜻 생성용)
-  - 단어별 한국어 뜻 생성 함수 구현 (`app/services/llm/generate_meanings.py`)
-  - 컨텍스트 기반 의미 생성 (문맥 고려)
-- ◻️ 도메인 분류 로직 정립
-  - LLM 프롬프트 설계 (도메인 분류용)
-  - 도메인 분류 함수 구현 (`app/services/llm/classify_domain.py`)
-  - 도메인 카테고리 정의 (예: 기술, 과학, 역사, 음악 등)
+- ✅ vLLM 서버 연동 설정
+  - vLLM 서버 엔드포인트 설정 (http://tc-server-gpu:8000/v1/chat/completions)
+  - 모델명 설정 ("Qwen/Qwen2.5-14B-Instruct-AWQ")
+  - HTTP 클라이언트 구성 (httpx 비동기 사용)
+  - 환경 변수 관리 (서버 URL, 타임아웃 등)
+  - 인증 불필요 (내부 VPN 대역대)
+- ✅ LLM 설정 모듈 구성
+  - LLM 설정 모듈 생성 (`app/core/config.py`에 추가)
+  - vLLM 서버 URL, 모델명, 타임아웃 설정
+  - 재시도 로직 설정 (최대 재시도 횟수, 백오프 전략)
+- ✅ LLM 클라이언트 모듈 구현
+  - vLLM API 클라이언트 구현 (`app/services/llm/client.py`)
+  - OpenAI 호환 API 형식 지원 (`/v1/chat/completions`)
+  - 비동기 병렬 요청 처리 (asyncio 사용)
+  - JSON 응답 파싱 및 검증
+- ✅ 프롬프트 템플릿 모듈 구현
+  - 프롬프트 템플릿 관리 모듈 (`app/services/llm/prompts.py`)
+  - 단어 추출 프롬프트 템플릿 (1단계, 한국어)
+  - 숙어 추출 프롬프트 템플릿 (1단계, 한국어)
+  - 단어 상세 정보 프롬프트 템플릿 (2단계: 품사, 동의어, 예문, 한국어)
+  - 숙어 예문 생성 프롬프트 템플릿 (2단계: 예문, 한국어)
+  - JSON 응답 형식 명시 (각 프롬프트에 포함)
+- ⏳ 1단계: 단어 및 숙어 추출 로직 구현 (진행 중)
+  - 단어 추출 함수 구현 (`app/services/llm/extract_words.py`)
+    - 입력: 청크 텍스트 리스트, video_id
+    - 프롬프트: 단어 추출용 (모든 단어 추출, 문맥상 사용되는 뜻 최대 2개)
+    - 출력: {videoId: video_id, result: {단어: [뜻1, 뜻2], ...}}
+  - 숙어 추출 함수 구현 (`app/services/llm/extract_phrases.py`)
+    - 입력: 청크 텍스트 리스트, video_id
+    - 프롬프트: 숙어 추출용 (idiom, phrasal verb, collocation 기준)
+    - 출력: {videoId: video_id, result: {숙어: 뜻, ...}}
+  - 병렬 처리 로직 (청크별로 두 개의 프롬프트 동시 전송)
+- ◻️ 2단계: 단어 및 숙어 상세 정보 생성 로직 구현
+  - 단어 상세 정보 생성 함수 구현 (`app/services/llm/enrich_words.py`)
+    - 입력: 1단계 단어 추출 결과, 원본 청크 텍스트
+    - 프롬프트: 품사, 동의어, 예문 생성용 (한국어)
+    - 출력: {videoId: video_id, result: {단어: {품사: 품사, 동의어: [동의어1, 동의어2], 예문: 예문}, ...}}
+  - 숙어 예문 생성 함수 구현 (`app/services/llm/enrich_phrases.py`)
+    - 입력: 1단계 숙어 추출 결과, 원본 청크 텍스트
+    - 프롬프트: 예문 생성용 (한국어)
+    - 출력: {videoId: video_id, result: {숙어: {예문: 예문}, ...}}
+- ◻️ 3단계: 결과 병합 및 통합 로직 구현
+  - 결과 병합 함수 구현 (`app/services/llm/merge_results.py`)
+    - 입력: 모든 청크의 2단계 결과들
+    - 처리: video_id와 단어/숙어 기준으로 중복 제거 및 병합
+      - 같은 단어/숙어의 경우: 뜻과 예문을 합침 (중복 제거)
+      - 다른 뜻이나 예문이 있으면 추가
+      - 빈도수는 고려하지 않음
+    - 출력: {video_id: 비디오 아이디, words: [{단어: [뜻1, 뜻2, ...], 품사: 품사, 동의어: [동의어1, 동의어2], 예문: 예문}, ...], phrases: [{숙어: [뜻1, 뜻2], 예문: 예문}, ...]}
 - ◻️ LLM 서비스 통합 모듈 구현
   - 전체 워크플로우 통합 함수 (`app/services/llm/processor.py`)
-  - 청크별 처리 및 결과 병합 로직
+    - 입력: TranscriptResponse (video_id, transcript: List[TranscriptChunk])
+    - 처리:
+      1. 청크 텍스트 추출
+      2. 1단계: 단어 및 숙어 추출 (병렬)
+      3. 2단계: 단어 및 숙어 상세 정보 생성 (병렬)
+      4. 3단계: 결과 병합
+    - 출력: 병합된 최종 결과 (words, phrases 분리)
   - 에러 핸들링 및 재시도 로직
+  - 타임아웃 처리
+  - 부분 실패 처리 (일부 청크 실패 시에도 나머지 처리 계속)
+- ◻️ 단어장 응답 스키마 정의
+  - 단어장 응답 스키마 정의 (`app/models/schemas.py`)
+    - WordEntry: 단어 정보 (단어, 뜻 리스트, 품사, 동의어, 예문)
+    - PhraseEntry: 숙어 정보 (숙어, 뜻 리스트, 예문)
+    - VocabularyResponse: 최종 단어장 응답 (video_id, words: List[WordEntry], phrases: List[PhraseEntry])
+- ◻️ API 엔드포인트 구현
+  - 단어장 생성 엔드포인트 추가 (`app/routes/video.py`)
+    - `POST /api/video/{video_id}/vocabulary` 엔드포인트 구현
+    - TranscriptResponse를 받아서 LLM 처리 후 VocabularyResponse 반환
+    - 에러 핸들링 및 예외 처리
 - ◻️ 모듈 단위 테스트 및 예외 처리
   - LLM API 호출 실패 시 예외 처리
+  - JSON 파싱 실패 처리
   - 타임아웃 처리
-  - Rate limiting 처리 (API 호출 제한)
-  - 테스트용 Mock 구현
+  - 네트워크 오류 처리
+  - 테스트용 Mock 구현 (vLLM 서버 응답 시뮬레이션)
+  - 각 단계별 단위 테스트 작성
+  - 엔드포인트 통합 테스트 작성
 
 ## ◻️ Phase 5: 단어장 생성 및 응답
 - ◻️ 단어장 스키마 정의
