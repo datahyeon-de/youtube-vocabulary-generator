@@ -21,7 +21,7 @@ class VLLMClient:
         
         
     async def chat_completion(
-        self, messages: List[Dict[str, Any]], temperature: float = 0.7
+        self, messages: List[Dict[str, Any]], temperature: float = 0.7, max_tokens: int = 4096
     ) -> Dict[str, Any]:
         """
         OpenAI 호환 chat comlpetion API 호출
@@ -29,12 +29,12 @@ class VLLMClient:
         Args:
             messages: 대화 메시지 리스트 (예: [{"role": "user", "content": "..."}])
             temperature: 생성 온도 (0.0 ~ 2.0)
-            * max_tokens: 최대 토큰 수 -> vLLM 서버에서 4096 토큰 제한 설정 때문에 사용하지 않음
+            max_tokens: 최대 토큰 수 
             
         Returns:
             API 응답 딕셔너리
             
-         Raises:
+        Raises:
             httpx.HTTPError: HTTP 요청 실패 시
             ValueError: JSON 파싱 실패 시
             Exception: 예상치 못한 오류 발생 시
@@ -45,6 +45,7 @@ class VLLMClient:
             "model": self.model,
             "messages": messages,
             "temperature": temperature,
+            "max_tokens": max_tokens,
         }
         
         for attempt in range(1, self.max_retries + 1):
