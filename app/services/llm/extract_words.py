@@ -4,6 +4,7 @@
 LLM을 사용하여 자막 청크에서 단어를 추출하고 한국어 뜻을 생성합니다.
 """
 import json
+import asyncio
 from typing import Dict, List, Any
 from app.services.llm.client import get_vllm_client
 from app.services.llm.prompts import get_word_extraction_prompt
@@ -11,6 +12,72 @@ from app.core.logging import get_access_logger, get_error_logger
 
 ACCESS_LOGGER = get_access_logger()
 ERROR_LOGGER = get_error_logger()
+
+
+async def _extract_words_from_single_chunk(
+    chunk_text: str,
+    chunk_idx: int,
+    total_chunks: int,
+    video_id: str
+) -> Dict[str, Any]:
+    """
+    단일 청크에서 단어를 추출합니다 (내부 헬퍼 함수)
+    
+    Args:
+        chunk_text: 자막 청크 텍스트
+        chunk_idx: 청크 인덱스 (1부터 시작)
+        total_chunks: 전체 청크 개수
+        video_id: 비디오 ID
+        
+    Returns:
+        딕셔너리 형태의 결과:
+        {
+            "단어1": {
+                "품사": "n",
+                "뜻": ["뜻1", "뜻2"]
+            },
+            ...
+        }
+        
+    Raises:
+        ValueError: JSON 파싱 실패 또는 응답 형식 오류 시
+        Exception: LLM API 호출 실패 시
+    """
+    client = await get_vllm_client()
+    
+    try:
+        # 프롬프트 생성
+        prompt = get_word_extraction_prompt(chunk_text, video_id)
+        
+        # LLM API 호출
+        messages = [{"role": "user", "content": prompt}]
+        response = await client.chat_completion(messages, temperature=0.7)
+        
+        # 응답에서 콘텐츠 추출 (await 불필요하지만 호환성 유지)
+        content = await client.extract_content_from_response(response)
+        
+        # JSON 파싱
+        parsed_result = json.loads(content)
+        
+        # 결과 검증
+        result = parsed_result.get("result")
+        if not result or not isinstance(result, dict):
+            error_msg = f"Invalid Response Format for Chunk {chunk_idx}/{total_chunks} - Video ID: '{video_id}' - Response: {content[:200]}"
+            ERROR_LOGGER.error(error_msg)
+            raise ValueError(error_msg)
+        
+        ACCESS_LOGGER.debug(f"Word Extraction Success for Chunk {chunk_idx}/{total_chunks} - Video ID: '{video_id}' - Words: {len(result)}")
+        return result
+        
+    except json.JSONDecodeError as e:
+        error_msg = f"JSON Parse Failed for Chunk {chunk_idx}/{total_chunks} - Video ID: '{video_id}' - Error: {str(e)}"
+        ERROR_LOGGER.error(error_msg)
+        raise ValueError(error_msg) from e
+        
+    except Exception as e:
+        error_msg = f"Word Extraction Failed for Chunk {chunk_idx}/{total_chunks} - Video ID: '{video_id}' - Error: {str(e)}"
+        ERROR_LOGGER.error(error_msg)
+        raise
 
 
 async def extract_words_from_chunks(
@@ -29,8 +96,14 @@ async def extract_words_from_chunks(
         {
             "videoId": video_id,
             "result": {
-                "단어1": ["뜻1", "뜻2"],
-                "단어2": ["뜻1"],
+                "단어1": {
+                    "품사": "n",
+                    "뜻": ["뜻1", "뜻2"]
+                },
+                "단어2": {
+                    "품사": "v",
+                    "뜻": ["뜻1"]
+                },
                 ...
             }
         }
@@ -39,60 +112,69 @@ async def extract_words_from_chunks(
         ValueError: JSON 파싱 실패 또는 응답 형식 오류 시
         Exception: LLM API 호출 실패 시
     """
-    client = await get_vllm_client()
     combined_result = {}
     
     try:
         ACCESS_LOGGER.info(f"Start Word Extraction for Video ID: '{video_id}' - Total Chunks: {len(chunk_texts)}")
         
-        # 각 청크에 대해 단어 추출 수행
-        for idx, chunk_text in enumerate(chunk_texts, start=1):
-            try:
-                # 프롬프트 생성
-                prompt = get_word_extraction_prompt(chunk_text, video_id)
+        # 모든 청크에 대해 병렬로 작업 생성
+        tasks = [
+            _extract_words_from_single_chunk(
+                chunk_text, idx, len(chunk_texts), video_id
+            )
+            for idx, chunk_text in enumerate(chunk_texts, start=1)
+        ]
+        
+        # 모든 작업을 병렬로 실행 (부분 실패 허용)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # 결과 병합
+        for idx, result in enumerate(results, start=1):
+            if isinstance(result, Exception):
+                # 예외 발생한 청크는 로그만 남기고 건너뛰기
+                ERROR_LOGGER.error(f"Skipping Chunk {idx}/{len(chunk_texts)} due to error - Video ID: '{video_id}' - Error: {str(result)}")
+                continue
+            
+            if not result or not isinstance(result, dict):
+                continue
+            
+            # 단어들을 소문자로 정규화하여 병합
+            for word, word_data in result.items():
+                word_lower = word.lower().strip()
                 
-                # LLM API 호출
-                messages = [{"role": "user", "content": prompt}]
-                response = await client.chat_completion(messages, temperature=0.7)
-                
-                # 응답에서 콘텐츠 추출
-                content = await client.extract_content_from_response(response)
-                
-                # JSON 파싱
-                parsed_result = json.loads(content)
-                
-                # 결과 검증 및 병합
-                if "result" in parsed_result and isinstance(parsed_result["result"], dict):
-                    chunk_words = parsed_result["result"]
-                    
-                    # 단어들을 소문자로 정규화하여 병합
-                    for word, meanings in chunk_words.items():
-                        word_lower = word.lower().strip()
-                        if word_lower not in combined_result:
-                            combined_result[word_lower] = []
-                        
-                        # 뜻 추가 (중복 제거)
-                        if isinstance(meanings, list):
-                            for meaning in meanings:
-                                if meaning and meaning not in combined_result[word_lower]:
-                                    combined_result[word_lower].append(meaning)
-                        elif isinstance(meanings, str):
-                            if meanings not in combined_result[word_lower]:
-                                combined_result[word_lower].append(meanings)
-                    
-                    ACCESS_LOGGER.debug(f"Word Extraction Success for Chunk {idx}/{len(chunk_texts)} - Video ID: '{video_id}' - Words: {len(chunk_words)}")
+                # 새로운 구조: {"품사": "...", "뜻": [...]} 처리
+                if isinstance(word_data, dict):
+                    pos = word_data.get("품사", "")
+                    meanings = word_data.get("뜻", [])
+                # 구버전 구조 지원: ["뜻1", "뜻2"] 또는 "뜻"
+                elif isinstance(word_data, list):
+                    pos = ""
+                    meanings = word_data
+                elif isinstance(word_data, str):
+                    pos = ""
+                    meanings = [word_data]
                 else:
-                    ERROR_LOGGER.warning(f"Invalid Response Format for Chunk {idx}/{len(chunk_texts)} - Video ID: '{video_id}' - Response: {content[:200]}")
-                    
-            except json.JSONDecodeError as e:
-                ERROR_LOGGER.error(f"JSON Parse Failed for Chunk {idx}/{len(chunk_texts)} - Video ID: '{video_id}' - Error: {str(e)}")
-                # 계속 진행 (부분 실패 허용)
-                continue
+                    continue
                 
-            except Exception as e:
-                ERROR_LOGGER.error(f"Word Extraction Failed for Chunk {idx}/{len(chunk_texts)} - Video ID: '{video_id}' - Error: {str(e)}")
-                # 계속 진행 (부분 실패 허용)
-                continue
+                # 병합 로직
+                if word_lower not in combined_result:
+                    combined_result[word_lower] = {
+                        "품사": pos,
+                        "뜻": []
+                    }
+                else:
+                    # 품사가 없으면 유지, 있으면 업데이트 (나중 것 우선)
+                    if pos:
+                        combined_result[word_lower]["품사"] = pos
+                
+                # 뜻 추가 (중복 제거)
+                if isinstance(meanings, list):
+                    for meaning in meanings:
+                        if meaning and meaning not in combined_result[word_lower]["뜻"]:
+                            combined_result[word_lower]["뜻"].append(meaning)
+                elif isinstance(meanings, str):
+                    if meanings not in combined_result[word_lower]["뜻"]:
+                        combined_result[word_lower]["뜻"].append(meanings)
         
         # 최종 결과 구성
         final_result = {
