@@ -43,6 +43,7 @@ tests/
 │
 └── test_services/                 # 서비스 로직 테스트
     ├── __init__.py
+    ├── test_llm_prompts.py        # LLM 프롬프트 규칙 테스트
     ├── test_validator.py          # 링크 검증 서비스 테스트 (향후)
     └── test_transcript.py         # 자막 추출 서비스 테스트 (향후)
 ```
@@ -76,6 +77,7 @@ tests/
 
 **해당 파일**:
 - `test_models/test_schemas.py` - Pydantic 스키마 검증 로직 테스트
+- `test_services/test_llm_prompts.py` - 단어/숙어 추출 프롬프트 규칙 테스트
 - `test_services/test_validator.py` (향후) - URL 검증 함수 테스트
 - `test_services/test_transcript.py` (향후) - 자막 추출 함수 테스트
 
@@ -304,6 +306,32 @@ uvicorn app.main:app --reload
 # 터미널 2: 테스트 실행
 pytest tests/test_routes/test_video.py -v -s
 ```
+
+---
+
+### `test_services/test_llm_prompts.py` - LLM 프롬프트 규칙 테스트
+
+**파일 경로**: `tests/test_services/test_llm_prompts.py`
+
+**목적**: 프롬프트 수정 시 규칙 누락을 빠르게 감지하기 위한 초경량 단위 테스트입니다.
+
+**테스트 대상**:
+- `app/services/llm/prompts.py`의 `get_word_extraction_prompt`
+- `app/services/llm/prompts.py`의 `get_phrase_extraction_prompt`
+
+**주요 테스트 모듈**:
+
+1. **`test_word_prompt_enforces_unique_meanings`**
+   - **목적**: 단어 추출 프롬프트에 "중복 의미 제거" 규칙이 포함되어 있는지 확인
+   - **검증**: `"중복"`, `"최대 2개"`, `"하나만 유지"` 구문 존재 여부
+
+2. **`test_phrase_prompt_enforces_multi_token_rule`**
+   - **목적**: 숙어 추출 프롬프트가 다단어 표현만 허용하도록 안내하는지 확인
+   - **검증**: `"두 단어 이상"`, `"단일 단어"`, `"최소 두 개"` 구문 존재 여부
+
+**테스트 방법**:
+- 실질적인 LLM 호출 없이 문자열만 확인하므로 매우 빠르게 실행됩니다.
+- 프롬프트를 수정할 때마다 `pytest tests/test_services/test_llm_prompts.py -v`로 회귀 테스트를 수행하세요.
 
 ---
 
