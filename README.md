@@ -33,6 +33,7 @@ youtube-vocabulary-generator/
 │   ├── __init__.py
 │   ├── main.py                 # FastAPI 메인 서버 (로깅, 미들웨어 등록)
 │   ├── core/
+│   │   ├── config.py           # 설정 관리 (LLM 서버 설정 포함)
 │   │   ├── logging.py          # 로깅 설정
 │   │   └── middleware.py       # 요청/응답 로깅 미들웨어
 │   ├── routes/
@@ -41,7 +42,12 @@ youtube-vocabulary-generator/
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── validator.py        # 링크 검증 및 Video ID 추출
-│   │   └── transcript.py       # YouTube 자막 추출 및 청크 생성
+│   │   ├── transcript.py       # YouTube 자막 추출 및 청크 생성
+│   │   └── llm/                # LLM 처리 서비스
+│   │       ├── __init__.py
+│   │       ├── client.py       # vLLM 서버 클라이언트
+│   │       ├── prompts.py      # 프롬프트 템플릿 관리
+│   │       └── extract_words.py # 단어 추출 로직
 │   ├── models/
 │   │   ├── __init__.py
 │   │   └── schemas.py          # Pydantic 스키마
