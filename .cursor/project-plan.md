@@ -75,15 +75,17 @@
   - 숙어 예문 생성 프롬프트 템플릿 (2단계: 예문, 한국어)
   - JSON 응답 형식 명시 (각 프롬프트에 포함)
 - ⏳ 1단계: 단어 및 숙어 추출 로직 구현 (진행 중)
-  - 단어 추출 함수 구현 (`app/services/llm/extract_words.py`)
+  - ✅ 단어 추출 함수 구현 (`app/services/llm/extract_words.py`)
     - 입력: 청크 텍스트 리스트, video_id
-    - 프롬프트: 단어 추출용 (모든 단어 추출, 문맥상 사용되는 뜻 최대 2개)
-    - 출력: {videoId: video_id, result: {단어: [뜻1, 뜻2], ...}}
-  - 숙어 추출 함수 구현 (`app/services/llm/extract_phrases.py`)
+    - 프롬프트: 단어 추출용 (모든 단어 추출, 문맥상 사용되는 뜻 최대 2개, 품사 포함)
+    - 출력: {videoId: video_id, result: {단어: {품사: "n", 뜻: [뜻1, 뜻2]}, ...}}
+    - 구현 완료: 청크별 병렬 처리 (asyncio.gather), 결과 병합, 에러 핸들링, 로깅, 부분 실패 허용
+    - 내부 헬퍼 함수 `_extract_words_from_single_chunk` 구현
+  - ◻️ 숙어 추출 함수 구현 (`app/services/llm/extract_phrases.py`)
     - 입력: 청크 텍스트 리스트, video_id
     - 프롬프트: 숙어 추출용 (idiom, phrasal verb, collocation 기준)
     - 출력: {videoId: video_id, result: {숙어: 뜻, ...}}
-  - 병렬 처리 로직 (청크별로 두 개의 프롬프트 동시 전송)
+  - ◻️ 병렬 처리 로직 (청크별로 단어/숙어 추출 프롬프트 동시 전송)
 - ◻️ 2단계: 단어 및 숙어 상세 정보 생성 로직 구현
   - 단어 상세 정보 생성 함수 구현 (`app/services/llm/enrich_words.py`)
     - 입력: 1단계 단어 추출 결과, 원본 청크 텍스트
