@@ -43,7 +43,15 @@ tests/
 │
 └── test_services/                 # 서비스 로직 테스트
     ├── __init__.py
+    ├── conftest.py                # LLM 서비스 테스트 전용 fixture (vLLM 서버 확인)
     ├── test_llm_prompts.py        # LLM 프롬프트 규칙 테스트
+    ├── test_llm_extract_words.py  # 단어 추출 모듈 테스트 (1단계)
+    ├── test_llm_extract_phrases.py # 숙어 추출 모듈 테스트 (1단계)
+    ├── test_llm_enrich_words.py   # 단어 상세 정보 생성 모듈 테스트 (2단계)
+    ├── test_llm_enrich_phrases.py # 숙어 예문 생성 모듈 테스트 (2단계)
+    ├── test_llm_prompt_ab_test.py # 프롬프트 A/B 테스트 (1단계, 2단계 통합)
+    ├── test_llm_prompt_ab_test_prompts.py # A/B 테스트용 프롬프트 함수들 (40개 버전)
+    ├── ab_test_results/           # A/B 테스트 결과 저장 디렉토리
     ├── test_validator.py          # 링크 검증 서비스 테스트 (향후)
     └── test_transcript.py         # 자막 추출 서비스 테스트 (향후)
 ```
@@ -78,6 +86,11 @@ tests/
 **해당 파일**:
 - `test_models/test_schemas.py` - Pydantic 스키마 검증 로직 테스트
 - `test_services/test_llm_prompts.py` - 단어/숙어 추출 프롬프트 규칙 테스트
+- `test_services/test_llm_extract_words.py` - 단어 추출 함수 테스트 (1단계)
+- `test_services/test_llm_extract_phrases.py` - 숙어 추출 함수 테스트 (1단계)
+- `test_services/test_llm_enrich_words.py` - 단어 상세 정보 생성 함수 테스트 (2단계)
+- `test_services/test_llm_enrich_phrases.py` - 숙어 예문 생성 함수 테스트 (2단계)
+- `test_services/test_llm_prompt_ab_test.py` - 프롬프트 A/B 테스트 (1단계, 2단계 통합 테스트)
 - `test_services/test_validator.py` (향후) - URL 검증 함수 테스트
 - `test_services/test_transcript.py` (향후) - 자막 추출 함수 테스트
 
@@ -332,6 +345,335 @@ pytest tests/test_routes/test_video.py -v -s
 **테스트 방법**:
 - 실질적인 LLM 호출 없이 문자열만 확인하므로 매우 빠르게 실행됩니다.
 - 프롬프트를 수정할 때마다 `pytest tests/test_services/test_llm_prompts.py -v`로 회귀 테스트를 수행하세요.
+
+---
+
+### `test_services/test_llm_extract_words.py` - 단어 추출 모듈 테스트
+
+**파일 경로**: `tests/test_services/test_llm_extract_words.py`
+
+**목적**: 1단계 단어 추출 기능을 실제 vLLM 서버와 연동하여 테스트합니다.
+
+**중요**: 이 테스트는 **vLLM 서버가 실행 중**이어야 합니다. 서버가 없으면 자동으로 스킵됩니다.
+
+**테스트 대상**:
+- `app/services/llm/extract_words.py`의 `extract_words_from_chunks` 함수
+- 여러 청크를 병렬로 처리하여 단어 추출
+- 결과 구조 검증 (품사, 뜻 포함)
+
+**주요 테스트 모듈**:
+
+1. **`test_extract_words_from_chunks_success`**
+   - **목적**: 정상적인 청크 텍스트로 단어 추출 시 성공 응답 확인
+   - **검증**: 
+     - 응답에 `videoId`, `result` 필드 포함
+     - 단어가 추출되었는지 확인
+     - 각 단어의 구조가 올바른지 확인 (품사, 뜻)
+
+2. **`test_extract_words_from_chunks_empty_chunks`**
+   - **목적**: 빈 청크 리스트 처리 확인
+   - **검증**: 빈 결과가 올바르게 반환됨
+
+3. **`test_extract_words_from_chunks_single_chunk`**
+   - **목적**: 단일 청크 처리 확인
+   - **검증**: 단일 청크도 정상적으로 처리됨
+
+4. **`test_extract_words_result_structure`**
+   - **목적**: 결과 구조 검증
+   - **검증**: 
+     - 품사는 "n", "v", "adj", "adv" 중 하나
+     - 뜻은 리스트이며 최대 2개
+
+**테스트 실행 전 준비사항**:
+```bash
+# vLLM 서버가 실행 중이어야 함
+# 설정: app/core/config.py의 VLLM_SERVER_URL 확인
+
+# 테스트 실행
+pytest tests/test_services/test_llm_extract_words.py -v -s
+```
+
+---
+
+### `test_services/test_llm_extract_phrases.py` - 숙어 추출 모듈 테스트
+
+**파일 경로**: `tests/test_services/test_llm_extract_phrases.py`
+
+**목적**: 1단계 숙어 추출 기능을 실제 vLLM 서버와 연동하여 테스트합니다.
+
+**중요**: 이 테스트는 **vLLM 서버가 실행 중**이어야 합니다. 서버가 없으면 자동으로 스킵됩니다.
+
+**테스트 대상**:
+- `app/services/llm/extract_phrases.py`의 `extract_phrases_from_chunks` 함수
+- 여러 청크를 병렬로 처리하여 숙어 추출
+- 결과 구조 검증 (두 단어 이상, 뜻 포함)
+
+**주요 테스트 모듈**:
+
+1. **`test_extract_phrases_from_chunks_success`**
+   - **목적**: 정상적인 청크 텍스트로 숙어 추출 시 성공 응답 확인
+   - **검증**: 
+     - 응답에 `videoId`, `result` 필드 포함
+     - 숙어가 추출되었는지 확인
+     - 각 숙어가 두 단어 이상인지 확인
+
+2. **`test_extract_phrases_from_chunks_empty_chunks`**
+   - **목적**: 빈 청크 리스트 처리 확인
+   - **검증**: 빈 결과가 올바르게 반환됨
+
+3. **`test_extract_phrases_result_structure`**
+   - **목적**: 결과 구조 검증
+   - **검증**: 
+     - 모든 숙어가 두 단어 이상
+     - 뜻은 문자열 또는 리스트
+
+**테스트 실행 전 준비사항**:
+```bash
+# vLLM 서버가 실행 중이어야 함
+# 설정: app/core/config.py의 VLLM_SERVER_URL 확인
+
+# 테스트 실행
+pytest tests/test_services/test_llm_extract_phrases.py -v -s
+```
+
+---
+
+### `test_services/test_llm_enrich_words.py` - 단어 상세 정보 생성 모듈 테스트
+
+**파일 경로**: `tests/test_services/test_llm_enrich_words.py`
+
+**목적**: 2단계 단어 상세 정보 생성 기능을 실제 vLLM 서버와 연동하여 테스트합니다.
+
+**중요**: 이 테스트는 **vLLM 서버가 실행 중**이어야 합니다. 서버가 없으면 자동으로 스킵됩니다.
+
+**테스트 대상**:
+- `app/services/llm/enrich_words.py`의 `enrich_words` 함수
+- 1단계 단어 추출 결과에 동의어와 예문 추가
+- 결과 구조 검증 (동의어 최대 2개, 예문 포함)
+
+**주요 테스트 모듈**:
+
+1. **`test_enrich_words_success`**
+   - **목적**: 정상적인 1단계 결과로 단어 상세 정보 생성 시 성공 응답 확인
+   - **검증**: 
+     - 응답에 `videoId`, `result` 필드 포함
+     - 각 단어에 동의어와 예문이 포함됨
+     - 동의어는 최대 2개
+     - 예문은 영어 문자열
+
+2. **`test_enrich_words_empty_result`**
+   - **목적**: 빈 1단계 결과 처리 확인
+   - **검증**: 빈 결과가 올바르게 반환됨
+
+3. **`test_enrich_words_result_structure`**
+   - **목적**: 결과 구조 검증
+   - **검증**: 
+     - 모든 단어에 동의어와 예문 포함
+     - 동의어는 최대 2개
+     - 예문은 영어 문자열
+
+**테스트 실행 전 준비사항**:
+```bash
+# vLLM 서버가 실행 중이어야 함
+# 설정: app/core/config.py의 VLLM_SERVER_URL 확인
+
+# 테스트 실행
+pytest tests/test_services/test_llm_enrich_words.py -v -s
+```
+
+---
+
+### `test_services/test_llm_enrich_phrases.py` - 숙어 예문 생성 모듈 테스트
+
+**파일 경로**: `tests/test_services/test_llm_enrich_phrases.py`
+
+**목적**: 2단계 숙어 예문 생성 기능을 실제 vLLM 서버와 연동하여 테스트합니다.
+
+**중요**: 이 테스트는 **vLLM 서버가 실행 중**이어야 합니다. 서버가 없으면 자동으로 스킵됩니다.
+
+**테스트 대상**:
+- `app/services/llm/enrich_phrases.py`의 `enrich_phrases` 함수
+- 1단계 숙어 추출 결과에 예문 추가
+- 결과 구조 검증 (예문 포함)
+
+**주요 테스트 모듈**:
+
+1. **`test_enrich_phrases_success`**
+   - **목적**: 정상적인 1단계 결과로 숙어 예문 생성 시 성공 응답 확인
+   - **검증**: 
+     - 응답에 `videoId`, `result` 필드 포함
+     - 각 숙어에 예문이 포함됨
+     - 예문은 영어 문자열
+
+2. **`test_enrich_phrases_empty_result`**
+   - **목적**: 빈 1단계 결과 처리 확인
+   - **검증**: 빈 결과가 올바르게 반환됨
+
+3. **`test_enrich_phrases_result_structure`**
+   - **목적**: 결과 구조 검증
+   - **검증**: 
+     - 모든 숙어에 예문 포함
+     - 예문은 영어 문자열
+
+**테스트 실행 전 준비사항**:
+```bash
+# vLLM 서버가 실행 중이어야 함
+# 설정: app/core/config.py의 VLLM_SERVER_URL 확인
+
+# 테스트 실행
+pytest tests/test_services/test_llm_enrich_phrases.py -v -s
+```
+
+---
+
+### `test_services/test_llm_prompt_ab_test.py` - 프롬프트 A/B 테스트
+
+**파일 경로**: `tests/test_services/test_llm_prompt_ab_test.py`
+
+**목적**: 프롬프트의 여러 버전을 A/B 테스트하여 최적의 프롬프트 버전을 찾습니다.
+
+**중요**: 이 테스트는 **vLLM 서버가 실행 중**이어야 합니다. 서버가 없으면 자동으로 스킵됩니다.
+
+**관련 파일**:
+- `tests/test_services/test_llm_prompt_ab_test_prompts.py`: A/B 테스트용 프롬프트 함수들 (40개 버전)
+- `tests/test_services/ab_test_results/`: 테스트 결과 저장 디렉토리
+
+**테스트 대상**:
+- 1단계 프롬프트: 단어 추출, 숙어 추출 (각 10개 버전)
+- 2단계 프롬프트: 단어 상세 정보 생성, 숙어 예문 생성 (각 10개 버전)
+- 각 프롬프트 버전을 10번씩 실행하여 성공률 측정
+
+**주요 테스트 모듈**:
+
+1. **`test_stage1_prompt_ab_test`**
+   - **목적**: 1단계 프롬프트 (단어 추출, 숙어 추출) A/B 테스트
+   - **사용 Fixture**: `skip_if_vllm_unavailable`, `ab_test_chunk_text`, `ab_test_video_id`
+   - **검증**: 
+     - 각 프롬프트 버전의 성공률 측정
+     - JSON 파싱 성공/실패 기록
+     - 테스트 결과 JSON 파일 생성
+
+2. **`test_stage2_prompt_ab_test`**
+   - **목적**: 2단계 프롬프트 (단어 상세 정보 생성, 숙어 예문 생성) A/B 테스트
+   - **사용 Fixture**: `skip_if_vllm_unavailable`, `mock_word_extraction_result`, `mock_phrase_extraction_result`, `ab_test_video_id`
+   - **검증**: 
+     - 각 프롬프트 버전의 성공률 측정
+     - JSON 파싱 성공/실패 기록
+     - 테스트 결과 JSON 파일 생성
+
+**테스트 실행 전 준비사항**:
+```bash
+# vLLM 서버가 실행 중이어야 함
+# 설정: app/core/config.py의 VLLM_SERVER_URL 확인
+
+# 전체 A/B 테스트 실행
+pytest tests/test_services/test_llm_prompt_ab_test.py -v -s
+
+# 1단계만 테스트
+pytest tests/test_services/test_llm_prompt_ab_test.py::test_stage1_prompt_ab_test -v -s
+
+# 2단계만 테스트
+pytest tests/test_services/test_llm_prompt_ab_test.py::test_stage2_prompt_ab_test -v -s
+```
+
+**출력 결과**:
+- 테스트 결과는 `tests/test_services/ab_test_results/ab_test_results_stage1_YYYYMMDD_HHMMSS.json` 또는 `ab_test_results_stage2_YYYYMMDD_HHMMSS.json` 파일로 저장됩니다.
+- 각 프롬프트 버전별 성공률, 실패 원인, 전체 실패 응답 내용이 포함됩니다.
+- 실패한 케이스의 전체 LLM 응답 내용이 기록되어 분석이 용이합니다.
+
+---
+
+### `test_services/test_llm_prompt_ab_test_prompts.py` - A/B 테스트용 프롬프트 함수들
+
+**파일 경로**: `tests/test_services/test_llm_prompt_ab_test_prompts.py`
+
+**목적**: A/B 테스트에서 사용하는 프롬프트 함수들을 정의합니다.
+
+**내용**:
+- 단어 추출 프롬프트 10개 버전 (`get_word_extraction_prompt_v1` ~ `v10`)
+- 숙어 추출 프롬프트 10개 버전 (`get_phrase_extraction_prompt_v1` ~ `v10`)
+- 단어 상세 정보 생성 프롬프트 10개 버전 (`get_word_enrichment_prompt_v1` ~ `v10`)
+- 숙어 예문 생성 프롬프트 10개 버전 (`get_phrase_enrichment_prompt_v1` ~ `v10`)
+
+**설명**:
+- 이 파일은 `practice/phase4/prompt_ab_test.py`에서 추출한 프롬프트 함수들을 포함합니다.
+- `test_llm_prompt_ab_test.py`에서 직접 import하여 사용합니다.
+- 각 프롬프트 버전은 JSON 형식 강조 위치, 예시 포함 여부, 실패 예시 포함 여부 등에 따라 차별화됩니다.
+
+---
+
+### `test_services/conftest.py` - LLM 서비스 테스트 전용 Fixture
+
+**파일 경로**: `tests/test_services/conftest.py`
+
+**목적**: LLM 서비스 테스트에서 사용하는 공통 fixture를 정의합니다.
+
+**정의된 Fixture**:
+
+#### 일반 테스트용 Fixture
+
+1. **`sample_chunk_texts`**
+   - **타입**: `List[str]`
+   - **용도**: 테스트용 샘플 청크 텍스트 리스트 (8개 청크)
+   - **값**: 다양한 단어와 숙어가 포함된 샘플 데이터
+
+2. **`sample_video_id`**
+   - **타입**: `str`
+   - **용도**: 테스트용 샘플 Video ID
+   - **값**: `"test_video_123"`
+
+3. **`vllm_server_available`** (session scope)
+   - **타입**: `bool`
+   - **용도**: vLLM 서버가 실행 중인지 확인
+   - **반환**: 서버가 사용 가능하면 `True`, 아니면 `False`
+   - **설명**: `app/core/config.py`의 `VLLM_SERVER_URL` 설정을 참고하여 서버 연결 확인
+   - **확인 방법**: `/health`, `/v1/models`, `/v1/chat/completions` 엔드포인트를 순차적으로 확인
+
+4. **`skip_if_vllm_unavailable`**
+   - **타입**: `bool`
+   - **용도**: vLLM 서버가 사용 불가능하면 테스트를 자동으로 스킵
+   - **설명**: 이 fixture를 사용하는 테스트는 서버가 없으면 자동으로 스킵됩니다.
+
+#### A/B 테스트용 Fixture
+
+5. **`ab_test_chunk_text`**
+   - **타입**: `str`
+   - **용도**: A/B 테스트용 긴 청크 텍스트 (약 1,200자)
+   - **값**: 단어와 숙어가 적절한 비율로 포함된 긴 텍스트
+   - **설명**: 프롬프트 A/B 테스트에서 사용하는 표준 테스트 데이터
+
+6. **`ab_test_video_id`**
+   - **타입**: `str`
+   - **용도**: A/B 테스트용 Video ID
+   - **값**: `"ab_test_video_001"`
+
+7. **`mock_word_extraction_result`**
+   - **타입**: `Dict[str, Any]`
+   - **용도**: A/B 테스트용 단어 추출 결과 목업 (50개 단어)
+   - **값**: 1단계 단어 추출 결과 형식의 목업 데이터
+   - **설명**: 2단계 단어 상세 정보 생성 프롬프트 테스트에 사용
+
+8. **`mock_phrase_extraction_result`**
+   - **타입**: `Dict[str, Any]`
+   - **용도**: A/B 테스트용 숙어 추출 결과 목업 (18개 숙어)
+   - **값**: 1단계 숙어 추출 결과 형식의 목업 데이터
+   - **설명**: 2단계 숙어 예문 생성 프롬프트 테스트에 사용
+
+**사용 예시**:
+```python
+@pytest.mark.asyncio
+async def test_llm_function(skip_if_vllm_unavailable, sample_chunk_texts, sample_video_id):
+    """vLLM 서버가 없으면 자동으로 스킵됨"""
+    # 테스트 코드
+    result = await extract_words_from_chunks(sample_chunk_texts, sample_video_id)
+    assert result is not None
+
+@pytest.mark.asyncio
+async def test_ab_test(skip_if_vllm_unavailable, ab_test_chunk_text, ab_test_video_id):
+    """A/B 테스트용 fixture 사용"""
+    # A/B 테스트 코드
+    pass
+```
 
 ---
 
