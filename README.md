@@ -47,7 +47,8 @@ youtube-vocabulary-generator/
 │   │       ├── __init__.py
 │   │       ├── client.py       # vLLM 서버 클라이언트
 │   │       ├── prompts.py      # 프롬프트 템플릿 관리
-│   │       └── extract_words.py # 단어 추출 로직
+│   │       ├── extract_words.py # 단어 추출 로직 (1단계)
+│   │       └── extract_phrases.py # 숙어 추출 로직 (1단계)
 │   ├── models/
 │   │   ├── __init__.py
 │   │   └── schemas.py          # Pydantic 스키마
