@@ -69,11 +69,12 @@
   - JSON 응답 파싱 및 검증
 - ✅ 프롬프트 템플릿 모듈 구현
   - 프롬프트 템플릿 관리 모듈 (`app/services/llm/prompts.py`)
-  - 단어 추출 프롬프트 템플릿 (1단계, 한국어)
-  - 숙어 추출 프롬프트 템플릿 (1단계, 한국어)
-  - 단어 상세 정보 프롬프트 템플릿 (2단계: 품사, 동의어, 예문, 한국어)
-  - 숙어 예문 생성 프롬프트 템플릿 (2단계: 예문, 한국어)
+  - 단어 추출 프롬프트 템플릿 (1단계, 한국어) - v10 버전 사용
+  - 숙어 추출 프롬프트 템플릿 (1단계, 한국어) - v1 버전 사용
+  - 단어 상세 정보 프롬프트 템플릿 (2단계: 동의어, 예문, 한국어) - v1, v7 버전 지원, 재시도 로직 포함
+  - 숙어 예문 생성 프롬프트 템플릿 (2단계: 예문, 한국어) - v1, v7 버전 지원, 재시도 로직 포함
   - JSON 응답 형식 명시 (각 프롬프트에 포함)
+  - 프롬프트 A/B 테스트 수행 및 최적 버전 선택 완료
 - ⏳ 1단계: 단어 및 숙어 추출 로직 구현 (진행 중)
   - ✅ 단어 추출 함수 구현 (`app/services/llm/extract_words.py`)
     - 입력: 청크 텍스트 리스트, video_id
@@ -81,20 +82,27 @@
     - 출력: {videoId: video_id, result: {단어: {품사: "n", 뜻: [뜻1, 뜻2]}, ...}}
     - 구현 완료: 청크별 병렬 처리 (asyncio.gather), 결과 병합, 에러 핸들링, 로깅, 부분 실패 허용
     - 내부 헬퍼 함수 `_extract_words_from_single_chunk` 구현
-  - ◻️ 숙어 추출 함수 구현 (`app/services/llm/extract_phrases.py`)
+  - ✅ 숙어 추출 함수 구현 (`app/services/llm/extract_phrases.py`)
     - 입력: 청크 텍스트 리스트, video_id
-    - 프롬프트: 숙어 추출용 (idiom, phrasal verb, collocation 기준)
+    - 프롬프트: 숙어 추출용 (idiom, phrasal verb, collocation 기준, 두 단어 이상 강제)
     - 출력: {videoId: video_id, result: {숙어: 뜻, ...}}
-  - ◻️ 병렬 처리 로직 (청크별로 단어/숙어 추출 프롬프트 동시 전송)
-- ◻️ 2단계: 단어 및 숙어 상세 정보 생성 로직 구현
-  - 단어 상세 정보 생성 함수 구현 (`app/services/llm/enrich_words.py`)
-    - 입력: 1단계 단어 추출 결과, 원본 청크 텍스트
-    - 프롬프트: 품사, 동의어, 예문 생성용 (한국어)
-    - 출력: {videoId: video_id, result: {단어: {품사: 품사, 동의어: [동의어1, 동의어2], 예문: 예문}, ...}}
-  - 숙어 예문 생성 함수 구현 (`app/services/llm/enrich_phrases.py`)
-    - 입력: 1단계 숙어 추출 결과, 원본 청크 텍스트
-    - 프롬프트: 예문 생성용 (한국어)
+    - 구현 완료: 청크별 병렬 처리 (asyncio.gather), 결과 병합, 에러 핸들링, 로깅, 부분 실패 허용
+    - 내부 헬퍼 함수 `_extract_phrases_from_single_chunk` 구현
+    - 프롬프트 규칙 강화: 단일 단어 제외, 관용적 의미만 추출
+  - ◻️ 병렬 처리 로직 (청크별로 단어/숙어 추출 프롬프트 동시 전송) - MVP에서는 스킵
+- ✅ 2단계: 단어 및 숙어 상세 정보 생성 로직 구현
+  - ✅ 단어 상세 정보 생성 함수 구현 (`app/services/llm/enrich_words.py`)
+    - 입력: 1단계 단어 추출 결과 ({단어: {품사: "n", 뜻: [뜻1, 뜻2]}, ...})
+    - 프롬프트: 동의어, 예문 생성용 (품사는 1단계에서 이미 추출됨, 원문 청크 불필요)
+    - 출력: {videoId: video_id, result: {단어: {동의어: [동의어1, 동의어2], 예문: 예문}, ...}}
+    - 구현 완료: 1단계 결과를 한 번에 처리 (청크별 분리 없음), 한 번의 LLM 호출
+    - 재시도 로직 구현: v1 → v7 → v1 → v7 순서로 최대 4번 시도 (각 버전당 최대 2번)
+  - ✅ 숙어 예문 생성 함수 구현 (`app/services/llm/enrich_phrases.py`)
+    - 입력: 1단계 숙어 추출 결과 ({숙어: 뜻, ...})
+    - 프롬프트: 예문 생성용 (원문 청크 불필요)
     - 출력: {videoId: video_id, result: {숙어: {예문: 예문}, ...}}
+    - 구현 완료: 1단계 결과를 한 번에 처리 (청크별 분리 없음), 한 번의 LLM 호출
+    - 재시도 로직 구현: v1 → v7 → v1 → v7 순서로 최대 4번 시도 (각 버전당 최대 2번)
 - ◻️ 3단계: 결과 병합 및 통합 로직 구현
   - 결과 병합 함수 구현 (`app/services/llm/merge_results.py`)
     - 입력: 모든 청크의 2단계 결과들
@@ -125,14 +133,18 @@
     - `POST /api/video/{video_id}/vocabulary` 엔드포인트 구현
     - TranscriptResponse를 받아서 LLM 처리 후 VocabularyResponse 반환
     - 에러 핸들링 및 예외 처리
-- ◻️ 모듈 단위 테스트 및 예외 처리
+- ✅ 모듈 단위 테스트 및 예외 처리
   - LLM API 호출 실패 시 예외 처리
   - JSON 파싱 실패 처리
   - 타임아웃 처리
   - 네트워크 오류 처리
-  - 테스트용 Mock 구현 (vLLM 서버 응답 시뮬레이션)
-  - 각 단계별 단위 테스트 작성
-  - 엔드포인트 통합 테스트 작성
+  - 각 단계별 단위 테스트 작성 (`tests/test_services/test_llm_extract_words.py`, `test_llm_extract_phrases.py`, `test_llm_enrich_words.py`, `test_llm_enrich_phrases.py`)
+  - 프롬프트 A/B 테스트 모듈 구현 (`tests/test_services/test_llm_prompt_ab_test.py`)
+    - 1단계 프롬프트 A/B 테스트 (단어 추출, 숙어 추출)
+    - 2단계 프롬프트 A/B 테스트 (단어 상세 정보 생성, 숙어 예문 생성)
+    - vLLM 서버 상태 확인 로직 포함
+    - 테스트 결과 JSON 파일 생성
+  - 엔드포인트 통합 테스트 작성 (예정)
 
 ## ◻️ Phase 5: 단어장 생성 및 응답
 - ◻️ 단어장 스키마 정의
@@ -154,3 +166,5 @@
 # 5. 추후 과제
 
 - **app/services/transcript.py**: 자막 청크 처리 과정을 요청 정보와 함께 세분화해 기록할 수 있는 전용 로거 도입 검토 (별도 로거/핸들러 및 요청 컨텍스트 연계)
+- **app/services/llm/extract_words.py, extract_phrases.py**: 1단계 단어/숙어 추출 과정에서 실패한 청크에 대한 재시도 로직 구현 (현재는 부분 실패 허용하지만 실패한 청크는 재시도하지 않음)
+- **프롬프트 최적화**: A/B 테스트 결과 분석 문서 작성 완료 (`docs/prompt-ab-test-analysis.md`)
