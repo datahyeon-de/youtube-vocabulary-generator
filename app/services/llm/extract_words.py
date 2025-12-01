@@ -167,7 +167,7 @@ async def extract_words_from_chunks(
             
             # 모든 작업을 병렬로 실행 (부분 실패 허용)
             results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+            
             # 결과 병합
             for idx, result in enumerate(results, start=1):
                 if isinstance(result, Exception):

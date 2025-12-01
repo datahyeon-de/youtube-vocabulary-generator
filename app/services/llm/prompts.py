@@ -87,9 +87,9 @@ def get_phrase_extraction_prompt(chunk_text: str, video_id: str) -> str:
 
 요구사항:
 1. 텍스트에 등장하는 숙어를 추출합니다. 숙어는 다음을 포함합니다:
-   - Idiom (관용구): 예) "break the ice", "once in a blue moon"
-   - Phrasal verb (구동사): 예) "give up", "look forward to"
-   - Collocation (연어): 예) "make a decision", "take a break"
+    - Idiom (관용구): 예) "break the ice", "once in a blue moon"
+    - Phrasal verb (구동사): 예) "give up", "look forward to"
+    - Collocation (연어): 예) "make a decision", "take a break"
 2. 두 단어 이상으로 이루어진 표현만 숙어로 인정합니다. 단일 단어나 단순 명사/동사는 절대로 포함하지 마세요.
 3. 숙어는 문맥상 특별한 의미 또는 관용적 의미가 드러나는 표현만 선택합니다. 단순히 빈출하는 일반 조합은 제외합니다.
 4. 각 숙어에 대한 뜻은 문맥상 자연스러운 "한국어"로 제공합니다.
@@ -134,8 +134,8 @@ def get_word_enrichment_prompt_v1(
     "단어2": {{
       "동의어": ["synonym1"],
       "예문": "Example sentence in English."
-    }}
   }}
+}}
 }}
 
 ⚠️ 중요: 마크다운 코드 블록(```json 또는 ```)을 절대 사용하지 마세요. 순수 JSON만 출력하세요.

@@ -37,11 +37,11 @@ async def enrich_words(
         {
             "videoId": video_id,
             "result": {
-                "단어1": {
-                    "동의어": ["synonym1", "synonym2"],
-                    "예문": "Example sentence in English."
-                },
-                ...
+            "단어1": {
+                "동의어": ["synonym1", "synonym2"],
+                "예문": "Example sentence in English."
+            },
+            ...
             }
         }
         
