@@ -80,3 +80,72 @@ class TranscriptResponse(BaseModel):
     message: str | None = None
     
     
+class WordEntry(BaseModel):
+    """단어 엔트리 스키마"""
+    word: str
+    pos: str  # 품사 (part of speech)
+    meanings: List[str]  # 한국어 뜻 리스트
+    synonyms: List[str]  # 동의어 리스트
+    example: str  # 예문 (영어)
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "word": "example",
+                "pos": "n",
+                "meanings": ["예시", "사례"],
+                "synonyms": ["instance", "case"],
+                "example": "This is an example sentence."
+            }
+        }
+
+
+class PhraseEntry(BaseModel):
+    """숙어 엔트리 스키마"""
+    phrase: str
+    meaning: str  # 한국어 뜻
+    example: str  # 예문 (영어)
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "phrase": "look forward to",
+                "meaning": "기대하다",
+                "example": "I look forward to meeting you."
+            }
+        }
+
+
+class VocabularyResponse(BaseModel):
+    """단어장 응답 스키마"""
+    video_id: str
+    words: List[WordEntry]
+    phrases: List[PhraseEntry]
+    status: str = "success"
+    message: str | None = None
+    
+    class Config:
+        json_schema_extra = {
+            "example": {
+                "video_id": "dQw4w9WgXcQ",
+                "words": [
+                    {
+                        "word": "example",
+                        "pos": "n",
+                        "meanings": ["예시", "사례"],
+                        "synonyms": ["instance", "case"],
+                        "example": "This is an example sentence."
+                    }
+                ],
+                "phrases": [
+                    {
+                        "phrase": "look forward to",
+                        "meaning": "기대하다",
+                        "example": "I look forward to meeting you."
+                    }
+                ],
+                "status": "success",
+                "message": None
+            }
+        }
+    
