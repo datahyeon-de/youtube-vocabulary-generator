@@ -11,6 +11,10 @@ LLM 서비스 서버에서 인증을 구현하는 방법과 JWT 토큰 사용 �
 3. [JWT 토큰 기반 인증](#3-jwt-토큰-기반-인증)
 4. [인증 구현 위치 및 방법](#4-인증-구현-위치-및-방법)
 5. [권장 사항](#5-권장-사항)
+   - [5.1 현재 시스템에 맞는 인증 전략](#51-현재-시스템에-맞는-인증-전략)
+   - [5.2 보안 고려사항](#52-보안-고려사항)
+   - [5.3 구현 우선순위](#53-구현-우선순위)
+   - [5.4 API Key vs JWT: 언제 무엇을 사용할까?](#54-api-key-vs-jwt-언제-무엇을-사용할까)
 
 ---
 
@@ -478,30 +482,47 @@ app/
 - 사용자는 프론트엔드를 통해 접근
 - 서버 간 통신이 주 목적
 
-**권장 방식:**
+**권장 방식: API 키 기반 인증**
 
-#### 옵션 1: API 키 기반 (간단함)
+현재 아키텍처에서는 **API 키만으로 충분**합니다.
 
-**장점:**
-- 구현 간단
-- 서버 간 통신에 적합
-- 데이터베이스 조회만 필요
+```
+[프론트엔드] → [백엔드 서버] → [비즈니스 처리 백엔드]
+                (JWT 검증)      (API Key 검증)
+```
 
-**구현:**
-- 미들웨어에서 `X-API-Key` 헤더 검증
-- 데이터베이스에서 API 키 존재 여부 확인
+**이 구조에서 API Key만으로 충분한 이유:**
+- 서버 간 통신만 필요
+- 사용자 정보가 비즈니스 처리 백엔드에 필요 없음
+- 백엔드 서버가 이미 사용자 인증을 처리함
+- 단순히 "인증된 백엔드 서버"인지만 확인하면 됨
 
-#### 옵션 2: JWT 토큰 기반 (확장성)
+**최소 구현 예시:**
 
-**장점:**
-- 사용자 정보 포함 가능
-- 무상태성
-- 확장성 좋음
+```python
+# app/core/api_key_auth.py
+async def get_api_key(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key")
+) -> str:
+    """API Key 검증 - 최소 구현"""
+    if not x_api_key:
+        raise HTTPException(status_code=401, detail="API Key required")
+    
+    # DB에서 API Key 검증
+    is_valid = await validate_api_key(x_api_key)
+    if not is_valid:
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+    
+    return x_api_key
 
-**구현:**
-- 미들웨어 또는 의존성에서 JWT 검증
-- 백엔드 서버와 동일한 시크릿 키 사용
-- 토큰에서 사용자 정보 추출
+# app/routes/video.py
+@router.post("/{video_id}/vocabulary")
+async def post_generate_vocabulary(
+    video_id: str,
+    api_key: str = Depends(get_api_key)  # 이것만으로 충분
+):
+    # 비즈니스 로직...
+```
 
 ### 5.2 보안 고려사항
 
@@ -530,15 +551,199 @@ app/
 1. **1단계: API 키 기반 인증**
    - 간단하고 빠른 구현
    - 서버 간 통신에 충분
+   - 현재 프로젝트에 적합
 
 2. **2단계: JWT 토큰 지원 추가**
    - 사용자 정보가 필요한 경우
    - 확장성 요구사항 발생 시
+   - (5.4 섹션 참고)
 
 3. **3단계: 고급 기능**
    - 토큰 블랙리스트
    - Rate Limiting
    - 사용자별 권한 관리
+
+### 5.4 API Key vs JWT: 언제 무엇을 사용할까?
+
+#### API Key만으로 충분한 경우
+
+현재 프로젝트와 같은 **서버 간 통신** 구조에서는 API Key만으로 충분합니다.
+
+**특징:**
+- 백엔드 서버가 이미 사용자 인증을 처리
+- 비즈니스 처리 백엔드는 사용자 정보가 필요 없음
+- 단순히 "인증된 서버"인지만 확인하면 됨
+
+**구현:**
+- API Key 검증만 수행
+- 데이터베이스에서 API Key 존재 여부 확인
+- 사용자 정보는 필요 없음
+
+#### JWT가 필요한 구체적인 시나리오
+
+다음과 같은 요구사항이 **실제로 발생할 때** JWT를 추가하는 것을 고려하세요:
+
+##### 시나리오 1: 사용자별 데이터 접근 제어
+
+**예시:** 사용자 A는 자신의 단어장만 볼 수 있어야 함
+
+```
+[프론트엔드] → [비즈니스 처리 백엔드]
+                (JWT에서 user_id 추출)
+                → 사용자별 단어장 필터링
+```
+
+**구현:**
+```python
+@router.get("/vocabularies")
+async def get_user_vocabularies(
+    current_user: dict = Depends(get_current_user)  # JWT에서 user_id 추출
+):
+    user_id = current_user["user_id"]
+    # user_id로 필터링된 데이터만 반환
+    vocabularies = db.query(Vocabulary).filter(Vocabulary.user_id == user_id).all()
+    return vocabularies
+```
+
+**API Key만으로는:**
+- API Key → user_id 매핑을 위해 DB 조회 필요
+- 매 요청마다 DB 조회 발생
+- JWT는 토큰 자체에 user_id가 포함되어 DB 조회 없이 가능
+
+##### 시나리오 2: 실시간 권한 변경
+
+**예시:** 사용자가 프리미엄으로 업그레이드 → 즉시 권한 반영
+
+```
+[프론트엔드] → [백엔드 서버] (권한 변경)
+                ↓
+[비즈니스 처리 백엔드] (JWT에 최신 권한 정보 포함)
+```
+
+**구현:**
+```python
+# JWT Payload에 권한 정보 포함
+{
+  "user_id": 123,
+  "role": "premium",  # 이 정보가 실시간으로 반영됨
+  "exp": 1735689600
+}
+
+# 비즈니스 처리 백엔드에서 권한 확인
+@router.post("/premium-feature")
+async def premium_feature(
+    current_user: dict = Depends(get_current_user)
+):
+    if current_user["role"] != "premium":
+        raise HTTPException(status_code=403, detail="Premium required")
+    # 프리미엄 기능 제공
+```
+
+**API Key만으로는:**
+- 권한 변경 시 API Key 재발급 또는 DB 업데이트 필요
+- JWT는 토큰 재발급만으로 즉시 반영 가능
+
+##### 시나리오 3: 마이크로서비스 간 직접 통신
+
+**예시:** 서비스 A가 서비스 B를 호출할 때 사용자 정보 전달
+
+```
+[비즈니스 처리 백엔드 A] → [비즈니스 처리 백엔드 B]
+                            (JWT로 사용자 정보 전달)
+```
+
+**구현:**
+```python
+# 서비스 A가 서비스 B를 호출할 때
+async def call_service_b(user_jwt: str):
+    headers = {"Authorization": f"Bearer {user_jwt}"}
+    response = await httpx.post(
+        "https://service-b/api/data",
+        headers=headers
+    )
+    # 서비스 B는 JWT에서 사용자 정보를 직접 추출
+```
+
+**API Key만으로는:**
+- 서비스 간 사용자 정보 전달이 어려움
+- JWT는 사용자 정보를 포함해 전달 가능
+
+##### 시나리오 4: 사용량 추적 및 과금
+
+**예시:** 사용자별 API 호출 횟수 추적
+
+```
+[비즈니스 처리 백엔드]
+  - JWT에서 user_id 추출
+  - 사용자별 호출 횟수 카운트
+  - 과금 정보 업데이트
+```
+
+**구현:**
+```python
+@router.post("/{video_id}/vocabulary")
+async def post_generate_vocabulary(
+    video_id: str,
+    current_user: dict = Depends(get_current_user)  # JWT에서 user_id
+):
+    user_id = current_user["user_id"]
+    
+    # 사용자별 사용량 추적
+    usage = db.query(Usage).filter(Usage.user_id == user_id).first()
+    usage.call_count += 1
+    db.commit()
+    
+    # 과금 처리
+    if usage.call_count > usage.plan_limit:
+        raise HTTPException(status_code=402, detail="Usage limit exceeded")
+    
+    # 비즈니스 로직...
+```
+
+**API Key만으로는:**
+- API Key → user_id 매핑을 위해 DB 조회 필요
+- JWT는 토큰에서 직접 추출 가능
+
+##### 시나리오 5: 다중 서버 환경에서 세션 공유 불가
+
+**예시:** 여러 서버에서 세션 저장소 없이 인증
+
+```
+[서버 1] ← 사용자 요청
+[서버 2] ← 사용자 요청 (다른 서버)
+[서버 3] ← 사용자 요청 (또 다른 서버)
+
+→ 세션 저장소 없이도 모든 서버에서 인증 가능
+```
+
+**구현:**
+```python
+# 서버 1, 2, 3 모두 동일한 JWT_SECRET_KEY 사용
+# 세션 저장소 없이도 JWT 검증 가능
+def verify_jwt_token(token: str) -> dict:
+    payload = jwt.decode(
+        token,
+        settings.JWT_SECRET_KEY,  # 모든 서버가 동일한 키 사용
+        algorithms=["HS256"]
+    )
+    return payload  # DB 조회 없이 사용자 정보 추출
+```
+
+**API Key만으로는:**
+- API Key 검증은 가능하지만, 사용자 정보는 DB 조회 필요
+- JWT는 토큰 자체에 사용자 정보 포함
+
+#### JWT를 추가해야 하는 시점
+
+다음 요구사항이 **실제로 발생할 때** 고려하세요:
+
+- ✅ 사용자별 단어장 저장 및 조회 기능
+- ✅ 사용자별 사용량 추적 및 과금
+- ✅ 프리미엄/일반 사용자 권한 구분
+- ✅ 사용자별 설정 저장 기능
+- ✅ 마이크로서비스 간 사용자 정보 전달
+
+**이런 요구사항이 없으면 API Key만으로 시작하고, 필요할 때 JWT를 추가하는 것이 합리적입니다.**
 
 ---
 
@@ -546,9 +751,14 @@ app/
 
 현재 LLM 서비스 서버의 역할(백엔드 서버에서만 호출)을 고려할 때:
 
-1. **초기 구현**: API 키 기반 인증 (미들웨어 또는 의존성 주입)
-2. **확장 시**: JWT 토큰 지원 추가
+1. **초기 구현**: **API 키 기반 인증만으로 충분** (의존성 주입 권장)
+2. **확장 시**: JWT 토큰 지원 추가 (5.4 섹션의 시나리오 발생 시)
 3. **보안**: HTTPS 필수, 에러 메시지 최소화, Rate Limiting 고려
 
-인증은 **미들웨어**에서 처리하는 것을 권장하며, 세부 검증이 필요한 경우 **의존성 주입**을 함께 사용하는 하이브리드 접근이 가장 유연합니다.
+**핵심 원칙:**
+- 현재 요구사항에 맞는 최소한의 구현
+- 오버엔지니어링 방지
+- 실제 필요할 때 JWT 추가
+
+인증은 **의존성 주입**을 통해 처리하는 것을 권장하며, 모든 엔드포인트에 자동 적용이 필요한 경우 **미들웨어**를 함께 사용하는 하이브리드 접근이 가장 유연합니다.
 
