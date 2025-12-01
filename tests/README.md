@@ -253,6 +253,7 @@ def test_post_video_success(running_server_client):
 - `app/routes/video.py`의 모든 엔드포인트
 - `POST /api/video` - YouTube URL 처리 및 Video ID 반환
 - `POST /api/video/{video_id}/transcript` - Video ID로 자막 추출
+- `POST /api/video/{video_id}/vocabulary` - Video ID로 단어장 생성
 
 **주요 테스트 모듈**:
 
@@ -309,16 +310,53 @@ def test_post_video_success(running_server_client):
    - **테스트 방법**: 존재하지 않는 Video ID로 요청
    - **검증**: 
      - 상태 코드 400
-     - 에러 메시지에 Video ID 포함
+     - 에러 메시지 포함 (사용자 친화적 메시지)
+
+#### POST /api/video/{video_id}/vocabulary 엔드포인트 테스트
+
+9. **`test_post_generate_vocabulary_success`**
+   - **목적**: 정상적인 Video ID로 단어장 생성 요청 시 성공 응답 확인
+   - **테스트 방법**: 실행 중인 서버에 HTTP POST 요청
+   - **주의사항**: 
+     - LLM 처리가 필요하므로 시간이 오래 걸릴 수 있습니다 (수십 초 ~ 수분)
+     - vLLM 서버가 실행 중이어야 합니다
+     - 서버가 실행 중이지 않으면 자동으로 스킵됩니다
+   - **검증**:
+     - 상태 코드 200
+     - 응답에 `video_id`, `words`, `phrases`, `status` 포함
+     - `status`가 "success"
+     - `words`와 `phrases`가 리스트 형식
+     - 각 단어 엔트리에 `word`, `pos`, `meanings`, `synonyms`, `example` 포함
+     - 각 숙어 엔트리에 `phrase`, `meaning`, `example` 포함
+
+10. **`test_post_generate_vocabulary_invalid_video_id`**
+    - **목적**: 존재하지 않는 Video ID로 단어장 생성 요청 시 400 에러 확인
+    - **테스트 방법**: 존재하지 않는 Video ID로 요청
+    - **검증**: 
+      - 상태 코드 400
+      - 에러 메시지 포함 (사용자 친화적 메시지)
 
 **테스트 실행 전 준비사항**:
 ```bash
-# 터미널 1: 서버 실행
+# 터미널 1: FastAPI 서버 실행
 uvicorn app.main:app --reload
 
-# 터미널 2: 테스트 실행
+# 터미널 2: vLLM 서버 실행 확인 (vocabulary 엔드포인트 테스트의 경우)
+# vLLM 서버가 실행 중이어야 합니다 (app/core/config.py의 VLLM_SERVER_URL 확인)
+
+# 터미널 3: 테스트 실행
+# 전체 테스트 실행
 pytest tests/test_routes/test_video.py -v -s
+
+# vocabulary 엔드포인트 테스트만 실행
+pytest tests/test_routes/test_video.py::test_post_generate_vocabulary_success -v -s
+pytest tests/test_routes/test_video.py::test_post_generate_vocabulary_invalid_video_id -v -s
 ```
+
+**서버 실행 여부 확인**:
+- 테스트는 자동으로 서버 실행 여부를 확인합니다 (`/health` 엔드포인트 사용)
+- 서버가 실행 중이지 않으면 해당 테스트는 자동으로 스킵됩니다
+- vocabulary 엔드포인트 테스트는 vLLM 서버도 실행 중이어야 합니다
 
 ---
 
@@ -1105,6 +1143,61 @@ def test_post_get_video_transcript_invalid_video_id(running_server_client, inval
         f"/api/video/{invalid_video_id}/transcript"
     )
     assert response.status_code == 400
+```
+
+---
+
+#### 7. `server_available` Fixture (session scope)
+
+```python
+@pytest.fixture(scope="session")
+def server_available():
+    """FastAPI 서버가 실행 중인지 확인하는 fixture"""
+    # /health 엔드포인트로 서버 실행 여부 확인
+    return True or False
+```
+
+**설명**:
+- **타입**: `bool`
+- **용도**: FastAPI 서버가 실행 중인지 확인
+- **반환**: 서버가 사용 가능하면 `True`, 아니면 `False`
+- **확인 방법**: `/health` 엔드포인트로 서버 연결 확인
+- **스코프**: `session` (테스트 세션당 한 번만 확인)
+
+**사용 예시**:
+```python
+@pytest.mark.skipif(not server_available(), reason="서버가 실행 중이지 않습니다")
+def test_endpoint(server_available, running_server_client):
+    # 서버가 없으면 자동으로 스킵됨
+    response = running_server_client.get("/health")
+    assert response.status_code == 200
+```
+
+---
+
+#### 8. `skip_if_server_unavailable` Fixture
+
+```python
+@pytest.fixture
+def skip_if_server_unavailable(server_available):
+    """서버가 사용 불가능하면 테스트를 자동으로 스킵하는 fixture"""
+    if not server_available:
+        pytest.skip("서버가 실행 중이지 않습니다...")
+    return True
+```
+
+**설명**:
+- **타입**: `bool` (항상 `True` 반환, 서버가 없으면 스킵)
+- **용도**: 서버가 실행 중이지 않으면 테스트를 자동으로 스킵
+- **의존성**: `server_available` fixture 사용
+- **동작**: 서버가 없으면 `pytest.skip()` 호출하여 테스트 스킵
+
+**사용 예시**:
+```python
+def test_endpoint(skip_if_server_unavailable, running_server_client):
+    """서버가 없으면 자동으로 스킵됨"""
+    response = running_server_client.get("/health")
+    assert response.status_code == 200
 ```
 
 ---
