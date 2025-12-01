@@ -12,6 +12,7 @@
     - 실제 서버 통신 테스트
 """
 import pytest
+import httpx
 
 
 @pytest.fixture
@@ -96,4 +97,53 @@ def invalid_video_id():
         - 존재하지 않는 영상 ID 입력 시 400 에러 반환 확인
     """
     return "INVALID_VIDEO_ID_12345"
+
+
+@pytest.fixture(scope="session")
+def server_available():
+    """FastAPI 서버가 실행 중인지 확인하는 fixture
+    
+    Returns:
+        bool: 서버가 사용 가능하면 True, 아니면 False
+        
+    확인 방법:
+        - /health 엔드포인트로 서버 실행 여부 확인
+        - 기본 포트: 8000 (tests/conftest.py의 running_server_client와 동일)
+        
+    사용 예시:
+        @pytest.mark.skipif(not server_available(), reason="서버가 실행 중이지 않습니다")
+        def test_endpoint(server_available, running_server_client):
+            # 테스트 코드
+    """
+    try:
+        base_url = "http://localhost:8000"
+        with httpx.Client(base_url=base_url, timeout=5.0) as client:
+            try:
+                response = client.get("/health", timeout=2.0)
+                if response.status_code == 200:
+                    return True
+            except (httpx.ConnectError, httpx.TimeoutException, httpx.NetworkError):
+                return False
+            except Exception:
+                return False
+    except Exception:
+        return False
+    return False
+
+
+@pytest.fixture
+def skip_if_server_unavailable(server_available):
+    """서버가 사용 불가능하면 테스트를 자동으로 스킵하는 fixture
+    
+    사용 위치:
+        - tests/test_routes/test_video.py: 실행 중인 서버가 필요한 테스트
+    
+    사용 예시:
+        def test_endpoint(skip_if_server_unavailable, running_server_client):
+            # 서버가 없으면 자동으로 스킵됨
+            # 테스트 코드
+    """
+    if not server_available:
+        pytest.skip("서버가 실행 중이지 않습니다. 'uvicorn app.main:app --reload' 명령어로 서버를 실행해주세요.")
+    return True
 
