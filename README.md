@@ -9,9 +9,10 @@
 ## ✨ 주요 기능
 
 1. 유튜브 영상 링크 입력 및 검증
-2. 자막 데이터 추출
-3. LLM을 활용한 도메인별 단어 선별 및 한국어 뜻 생성
-4. 단어장 생성 및 제공
+2. 자막 데이터 추출 및 청크 생성
+3. LLM을 활용한 단어 및 숙어 추출 (1단계)
+4. LLM을 활용한 단어 상세 정보 생성 (동의어, 예문) 및 숙어 예문 생성 (2단계)
+5. 단어장 생성 및 제공 API
 
 ## 🏗️ 프로젝트 구조
 
@@ -48,19 +49,41 @@ youtube-vocabulary-generator/
 │   │       ├── client.py       # vLLM 서버 클라이언트
 │   │       ├── prompts.py      # 프롬프트 템플릿 관리
 │   │       ├── extract_words.py # 단어 추출 로직 (1단계)
-│   │       └── extract_phrases.py # 숙어 추출 로직 (1단계)
+│   │       ├── extract_phrases.py # 숙어 추출 로직 (1단계)
+│   │       ├── enrich_words.py # 단어 상세 정보 생성 로직 (2단계)
+│   │       ├── enrich_phrases.py # 숙어 예문 생성 로직 (2단계)
+│   │       ├── merge_results.py # 결과 병합 로직 (3단계)
+│   │       └── processor.py    # 전체 워크플로우 통합 모듈
 │   ├── models/
 │   │   ├── __init__.py
-│   │   └── schemas.py          # Pydantic 스키마
+│   │   └── schemas.py          # Pydantic 스키마 (VideoUrlResponse, TranscriptResponse, VocabularyResponse 등)
 │   └── templates/              # HTML 템플릿 (필요시)
-├── llm_server/                 # 향후 확장용 (옵션)
+├── docs/                       # 프로젝트 문서
+│   ├── 01_youtube-transcript-api.md
+│   ├── 02_async-processing-guide.md
+│   ├── 03_parallel-processing-strategy.md
+│   ├── 04_prompt-ab-test-analysis.md
+│   ├── 05_pydantic-architecture-decision.md
+│   └── 06_authentication-strategy.md
+├── logs/                       # 로그 파일 (자동 생성)
+│   ├── access.log
+│   └── error.log
 └── tests/
     ├── __init__.py
     ├── conftest.py
     ├── test_main.py
     ├── test_models/
-    ├── test_routes/
-    └── test_services/
+    ├── test_routes/            # 라우트 통합 테스트
+    │   ├── conftest.py
+    │   └── test_video.py
+    └── test_services/          # 서비스 단위 테스트
+        ├── conftest.py
+        ├── test_llm_extract_words.py
+        ├── test_llm_extract_phrases.py
+        ├── test_llm_enrich_words.py
+        ├── test_llm_enrich_phrases.py
+        ├── test_llm_prompt_ab_test.py
+        └── ab_test_results/    # A/B 테스트 결과 파일
 ```
 
 ## 🚀 시작하기
@@ -80,9 +103,18 @@ pip install -r requirements.txt
 ### 실행 방법
 
 ```bash
-# 서버 실행 (Phase 2 이후 적용 예정)
+# 서버 실행
 uvicorn app.main:app --reload
+
+# 서버는 기본적으로 http://localhost:8000 에서 실행됩니다.
+# API 문서는 http://localhost:8000/docs 에서 확인할 수 있습니다.
 ```
+
+### API 엔드포인트
+
+- `POST /api/video/`: 유튜브 URL 입력 및 Video ID 추출
+- `POST /api/video/{video_id}/transcript`: 자막 추출 및 청크 생성
+- `POST /api/video/{video_id}/vocabulary`: 단어장 생성 (자막 추출 → LLM 처리 → 단어장 반환)
 
 ## 🛠️ Cursor 명령 가이드
 
@@ -108,16 +140,34 @@ uvicorn app.main:app --reload
 - **Phase 1**: 프로젝트 초기 설정 및 레포지터리 구성 ✅
 - **Phase 2**: FastAPI 서버 및 입력 검증 시스템 ✅
 - **Phase 3**: 자막 추출 서비스 ✅
-- **Phase 4**: LLM 처리 서버 구축 ⏳
-- **Phase 5**: 단어장 생성 및 응답
+- **Phase 4**: LLM 처리 서버 구축 ✅
+  - vLLM 서버 연동 및 클라이언트 구현
+  - 프롬프트 템플릿 모듈 (A/B 테스트 완료)
+  - 1단계: 단어 및 숙어 추출 로직
+  - 2단계: 단어 상세 정보 및 숙어 예문 생성 로직 (재시도 로직 포함)
+  - 3단계: 결과 병합 및 통합 로직
+  - API 엔드포인트 구현 (`POST /api/video/{video_id}/vocabulary`)
+  - 통합 테스트 작성
+- **Phase 5**: 단어장 생성 및 응답 (Phase 4에서 대부분 완료)
 - **Phase 6**: 통합 및 엔드투엔드 테스트
 
-자세한 내용은 프로젝트 계획서를 참고하세요.
+자세한 내용은 프로젝트 계획서 (`.cursor/project-plan.md`)를 참고하세요.
 
 ## 🤝 기여하기
 
 프로젝트에 기여하고 싶으시다면 [CONTRIBUTING.md](CONTRIBUTING.md)를 참고하세요.  
 브랜치 네이밍, 커밋 메시지, 이슈 작성 가이드가 포함되어 있습니다.
+
+## 🔧 기술 스택
+
+- **Backend Framework**: FastAPI
+- **Language**: Python 3.8+
+- **LLM Server**: vLLM (OpenAI 호환 API)
+- **Data Validation**: Pydantic
+- **Testing**: pytest
+- **Logging**: Python logging (파일 로테이션 포함)
+- **HTTP Client**: httpx (비동기)
+- **YouTube API**: youtube-transcript-api
 
 ## 📄 라이선스
 
