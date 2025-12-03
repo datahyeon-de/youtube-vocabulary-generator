@@ -20,7 +20,7 @@ def get_error_location() -> tuple[str, int, str]:
     """
     frame = inspect.currentframe()
     # 호출한 함수의 프레임을 가져오기 위해 한 단계 위로
-    caller_frame = frame.f_back if frame else None
+    caller_frame = frame.f_back.f_back if (frame and frame.f_back) else None
     if caller_frame:
         filename = caller_frame.f_code.co_filename
         line_number = caller_frame.f_lineno
