@@ -335,6 +335,130 @@ def test_post_get_video_transcript_invalid_video_id(
     
     assert response.status_code == 400
     assert "detail" in error_data
-    assert video_id in error_data["detail"]  # 에러 메시지에 Video ID가 포함되어 있는지 확인
+    # 에러 메시지가 사용자 친화적으로 변경되었으므로 Video ID 포함 여부는 확인하지 않음
+    print("✅ 존재하지 않는 Video ID 테스트 성공! (400 에러 정상)")
+
+
+# ============================================================================
+# POST /api/video/{video_id}/vocabulary 엔드포인트 테스트
+# ============================================================================
+
+def test_post_generate_vocabulary_success(
+    skip_if_server_unavailable,
+    running_server_client: httpx.Client,
+    sample_video_id
+):
+    """정상적인 Video ID로 단어장 생성 요청 시 성공 응답 테스트
+    
+    테스트 대상:
+        - app/routes/video.py의 POST /api/video/{video_id}/vocabulary 엔드포인트
+        - 자막이 있는 영상으로 단어장 생성 성공 확인
+        
+    주의사항:
+        - 이 테스트는 LLM 처리가 필요하므로 시간이 오래 걸릴 수 있습니다 (수십 초 ~ 수분)
+        - vLLM 서버가 실행 중이어야 합니다
+        - 서버가 실행 중이지 않으면 자동으로 스킵됩니다
+    """
+    # Arrange (준비): fixture에서 정상 Video ID 가져오기
+    video_id = sample_video_id
+    
+    # Act (실행): POST 요청 보내기 (LLM 처리가 필요하므로 타임아웃을 길게 설정)
+    print(f"\n[테스트 시작] POST /api/video/{video_id}/vocabulary (정상 케이스)")
+    print(f"⚠️  이 테스트는 LLM 처리가 필요하므로 시간이 오래 걸릴 수 있습니다...")
+    print(f"Video ID: {video_id}")
+    
+    try:
+        response = running_server_client.post(
+            f"/api/video/{video_id}/vocabulary",
+            follow_redirects=True,
+            timeout=300.0  # 5분 타임아웃 (LLM 처리 시간 고려)
+        )
+    except httpx.TimeoutException:
+        print("❌ 요청 타임아웃 (5분 초과)")
+        pytest.fail("단어장 생성 요청이 타임아웃되었습니다. vLLM 서버 상태를 확인해주세요.")
+    
+    # Assert (검증): 응답 확인
+    print(f"상태 코드: {response.status_code}")
+    
+    # 응답이 JSON인지 확인
+    if response.headers.get("content-type", "").startswith("application/json"):
+        data = response.json()
+        print(f"응답 내용 (일부): video_id={data.get('video_id')}, words={len(data.get('words', []))}, phrases={len(data.get('phrases', []))}")
+    else:
+        print(f"응답 내용: {response.text[:500]}")
+        raise AssertionError(f"예상하지 못한 응답 형식: {response.headers.get('content-type')}")
+    
+    assert response.status_code == 200
+    assert "video_id" in data
+    assert "words" in data
+    assert "phrases" in data
+    assert "status" in data
+    assert data["status"] == "success"
+    assert data["video_id"] == video_id
+    assert isinstance(data["words"], list)
+    assert isinstance(data["phrases"], list)
+    
+    # 단어 엔트리 구조 검증
+    if len(data["words"]) > 0:
+        word_entry = data["words"][0]
+        assert "word" in word_entry
+        assert "pos" in word_entry
+        assert "meanings" in word_entry
+        assert "synonyms" in word_entry
+        assert "example" in word_entry
+        assert isinstance(word_entry["meanings"], list)
+        assert isinstance(word_entry["synonyms"], list)
+        assert isinstance(word_entry["example"], str)
+    
+    # 숙어 엔트리 구조 검증
+    if len(data["phrases"]) > 0:
+        phrase_entry = data["phrases"][0]
+        assert "phrase" in phrase_entry
+        assert "meaning" in phrase_entry
+        assert "example" in phrase_entry
+        assert isinstance(phrase_entry["meaning"], str)
+        assert isinstance(phrase_entry["example"], str)
+    
+    print(f"✅ 정상 케이스 테스트 성공! (단어: {len(data['words'])}개, 숙어: {len(data['phrases'])}개)")
+
+
+def test_post_generate_vocabulary_invalid_video_id(
+    skip_if_server_unavailable,
+    running_server_client: httpx.Client,
+    invalid_video_id
+):
+    """존재하지 않는 Video ID로 단어장 생성 요청 시 에러 응답 테스트
+    
+    테스트 대상:
+        - app/routes/video.py의 POST /api/video/{video_id}/vocabulary 엔드포인트
+        - 존재하지 않는 영상 ID 입력 시 400 에러 반환 확인
+    """
+    # Arrange (준비): fixture에서 존재하지 않는 Video ID 가져오기
+    video_id = invalid_video_id
+    
+    # Act (실행): POST 요청 보내기
+    print(f"\n[테스트 결과] POST /api/video/{video_id}/vocabulary (존재하지 않는 Video ID)")
+    print(f"Video ID: {video_id}")
+    
+    response = running_server_client.post(
+        f"/api/video/{video_id}/vocabulary",
+        follow_redirects=True,
+        timeout=30.0  # 에러 케이스는 빠르게 처리될 것으로 예상
+    )
+    
+    # Assert (검증): 400 에러 확인
+    print(f"상태 코드: {response.status_code}")
+    
+    # 응답이 JSON인지 확인
+    if response.headers.get("content-type", "").startswith("application/json"):
+        error_data = response.json()
+        print(f"응답 내용: {error_data}")
+    else:
+        print(f"응답 내용: {response.text}")
+        raise AssertionError(f"예상하지 못한 응답 형식: {response.headers.get('content-type')}")
+    
+    assert response.status_code == 400
+    assert "detail" in error_data
+    # 에러 메시지가 사용자 친화적으로 변경되었으므로 Video ID 포함 여부는 확인하지 않음
     print("✅ 존재하지 않는 Video ID 테스트 성공! (400 에러 정상)")
 
