@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     VLLM_SERVER_ENDPOINT: str = "/v1/chat/completions"
     VLLM_SERVER_MODEL: str = "Qwen/Qwen2.5-14B-Instruct-AWQ"
     VLLM_SERVER_TIMEOUT: int = 60
-    VLLM_SERVER_MAX_RETRIES: int = 3
-    VLLM_SERVER_RETRY_DELAY: int = 3
+    VLLM_SERVER_MAX_RETRIES: int = 1
+    VLLM_SERVER_RETRY_DELAY: int = 2
     
 settings = Settings()
