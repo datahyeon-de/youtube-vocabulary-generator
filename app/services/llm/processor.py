@@ -4,6 +4,7 @@ LLM 처리 통합 모듈
 전체 워크플로우를 통합하여 자막 청크에서 단어장을 생성합니다.
 """
 import asyncio
+import random
 from typing import Dict, Any, List
 from app.services.llm.extract_words import extract_words_from_chunks
 from app.services.llm.extract_phrases import extract_phrases_from_chunks
@@ -71,6 +72,14 @@ async def process_vocabulary(
         raise ValueError("Video ID가 비어있습니다.")
     
     video_id = video_id.strip()
+    
+    # 청크가 10개를 초과하면 랜덤으로 10개만 선택
+    if len(chunk_texts) > 10:
+        ACCESS_LOGGER.info(
+            f"Subsampling chunks for Video ID: '{video_id}' - "
+            f"Total: {len(chunk_texts)} -> 10 (Random Selection)"
+        )
+        chunk_texts = random.sample(chunk_texts, 10)
     
     ACCESS_LOGGER.info(
         f"Start Vocabulary Processing for Video ID: '{video_id}' - "
