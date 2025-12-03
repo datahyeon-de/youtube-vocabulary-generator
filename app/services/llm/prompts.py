@@ -33,6 +33,7 @@ def get_word_extraction_prompt(chunk_text: str, video_id: str) -> str:
 
 중요:
 - 단어의 뜻에 "..." 및 "중국어", "한자"의 사용을 금지합니다.
+- 결과에 중국어(Chinese characters)와 이모티콘(Emojis)은 절대 포함하지 마십시오.
 - 단어의 뜻에 "masc.:", "female:", "남성:", "여성:" 등 성별 구분 표기를 절대 사용하지 마세요.
 - 단어는 반드시 소문자로 정규화해서 사용하세요.
 - 같은 의미가 반복되거나 동일 의미를 표현하는 문장을 두 번 작성하지 마세요.
@@ -97,6 +98,7 @@ def get_phrase_extraction_prompt(chunk_text: str, video_id: str) -> str:
 ⚠️ 중요: 일반적인 단어 조합은 제외하고, 의미가 특별한 숙어만 추출하세요.
 ⚠️ 중요: 단일 단어이거나 공백이 없는 표현은 무조건 제외하고, 최소 두 개 이상의 토큰을 가진 표현만 작성하세요.
 ⚠️ 중요: 숙어의 뜻에 "..." 및 "중국어", "한자"의 사용을 금지합니다.
+⚠️ 중요: 결과에 중국어(Chinese characters)와 이모티콘(Emojis)은 절대 포함하지 마십시오.
 """
 
 
@@ -140,6 +142,7 @@ def get_word_enrichment_prompt_v1(
 
 ⚠️ 중요: 마크다운 코드 블록(```json 또는 ```)을 절대 사용하지 마세요. 순수 JSON만 출력하세요.
 ⚠️ 중요: JSON 외의 텍스트는 절대 포함하지 마세요.
+⚠️ 중요: 결과에 중국어(Chinese characters)와 이모티콘(Emojis)은 절대 포함하지 마십시오.
 
 다음 단어들에 대해 영어 동의어(최대 2개)와 예문을 생성해주세요.
 
@@ -205,6 +208,7 @@ def get_word_enrichment_prompt_v7(
 - 마크다운 코드 블록(```json 또는 ```)을 절대 사용하지 마세요. 순수 JSON만 출력하세요.
 - JSON 외의 텍스트는 절대 포함하지 마세요.
 - 동의어와 예문은 반드시 영어로 작성해야 합니다.
+- 결과에 중국어(Chinese characters)와 이모티콘(Emojis)은 절대 포함하지 마십시오.
 - JSON 형식이 유효하지 않으면 파싱이 실패하므로, 반드시 유효한 JSON만 출력하세요.
 """
 
@@ -264,6 +268,7 @@ def get_phrase_enrichment_prompt_v1(
 
 ⚠️ 중요: 마크다운 코드 블록(```json 또는 ```)을 절대 사용하지 마세요. 순수 JSON만 출력하세요.
 ⚠️ 중요: JSON 외의 텍스트는 절대 포함하지 마세요.
+⚠️ 중요: 결과에 중국어(Chinese characters)와 이모티콘(Emojis)은 절대 포함하지 마십시오.
 
 다음 숙어들에 대해 해당 숙어를 사용한 간단한 영어 예문을 생성해주세요.
 
@@ -320,6 +325,7 @@ def get_phrase_enrichment_prompt_v7(
 - 마크다운 코드 블록(```json 또는 ```)을 절대 사용하지 마세요. 순수 JSON만 출력하세요.
 - JSON 외의 텍스트는 절대 포함하지 마세요.
 - 예문은 반드시 영어로 작성해야 합니다.
+- 결과에 중국어(Chinese characters)와 이모티콘(Emojis)은 절대 포함하지 마십시오.
 - JSON 형식이 유효하지 않으면 파싱이 실패하므로, 반드시 유효한 JSON만 출력하세요.
 """
 
