@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, status
+from pydantic import ValidationError
 from app.models.schemas import (
     VideoUrlRequests, 
     VideoUrlResponse, 
@@ -125,7 +126,8 @@ async def post_generate_vocabulary(video_id: str):
         for word_data in result.get("words", []):
             try:
                 words.append(WordEntry(**word_data))
-            except Exception as e:
+            except ValidationError as e:
+                # Pydantic ValidationError만 명시적으로 처리
                 # 개별 단어 변환 실패 시 로그만 남기고 건너뛰기
                 ERROR_LOGGER.warning(
                     f"Skipping word entry due to validation error - "
@@ -137,7 +139,8 @@ async def post_generate_vocabulary(video_id: str):
         for phrase_data in result.get("phrases", []):
             try:
                 phrases.append(PhraseEntry(**phrase_data))
-            except Exception as e:
+            except ValidationError as e:
+                # Pydantic ValidationError만 명시적으로 처리
                 # 개별 숙어 변환 실패 시 로그만 남기고 건너뛰기
                 ERROR_LOGGER.warning(
                     f"Skipping phrase entry due to validation error - "
@@ -155,15 +158,15 @@ async def post_generate_vocabulary(video_id: str):
         )
         
     except ValueError as e:
-        # 자막 추출 실패 등 (사용자 입력 오류)
+        # 자막 추출 실패 또는 LLM 처리 실패 등 (사용자 입력 오류 또는 처리 오류)
         # 실제 에러는 로그에 기록하고, 사용자에게는 일반적인 메시지 제공
         ERROR_LOGGER.error(
-            f"Transcript extraction failed for Video ID: '{video_id}' - Error: {str(e)}",
+            f"Vocabulary generation failed for Video ID: '{video_id}' - Error: {str(e)}",
             exc_info=True
         )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="자막을 추출할 수 없습니다. 자막이 활성화되어 있고 공개된 영상인지 확인해주세요."
+            detail="단어장 생성 중 오류가 발생했습니다. 입력값을 확인하거나 잠시 후 다시 시도해주세요."
         )
     except HTTPException:
         # 이미 HTTPException이 발생한 경우 재발생
