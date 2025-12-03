@@ -4,6 +4,7 @@ import httpx         # HTTP 클라이언트
 from typing import Dict, List, Optional, Any  # 타입 힌팅
 from app.core.config import settings  # 설정 가져오기
 from app.core.logging import get_access_logger, get_error_logger  # 로깅
+from app.core.error_utils import log_error_with_location
 
 ACCESS_LOGGER = get_access_logger()
 ERROR_LOGGER = get_error_logger()
@@ -118,8 +119,6 @@ class VLLMClient:
             생성된 텍스트 내용 (response["choices"][0]["message"]["content"])
         """
         try:
-            from app.core.error_utils import log_error_with_location
-            
             # choices 배열 확인하기
             choices = response.get("choices", [])
             if not choices:
@@ -180,7 +179,6 @@ class VLLMClient:
             
             # 빈 응답인 경우 로깅
             if not content_stripped:
-                from app.core.error_utils import log_error_with_location
                 log_error_with_location(
                     "Empty Response Content",
                     "응답 content가 비어있습니다.",
@@ -198,7 +196,6 @@ class VLLMClient:
             raise
         except Exception as e:
             # 예상치 못한 예외 발생 시 상세 정보 로깅
-            from app.core.error_utils import log_error_with_location
             log_error_with_location(
                 "Content Extraction Failed",
                 f"응답 결과 추출에 실패했습니다: {str(e)}",
